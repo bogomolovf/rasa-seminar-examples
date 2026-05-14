@@ -270,6 +270,122 @@ curl -s -X POST http://localhost:5005/model/parse \
 #   - years_experience="5"
 ```
 
+## Подключение к Telegram
+
+Помимо REST-канала (используется в smoke-тестах и `curl`-сценариях выше), бота
+можно поднять как полноценный Telegram-бот через **встроенный коннектор RASA
+3.6** — отдельный пакет ставить НЕ нужно (`telegram` уже в зависимостях
+`rasa`).
+
+### 1. Получить токен у @BotFather
+
+1. Открой в Telegram чат с [@BotFather](https://t.me/BotFather).
+2. Отправь `/newbot`.
+3. На запрос «Alright, a new bot. How are we going to call it?» — введи
+   человекочитаемое имя, например: `HR Screening Bot`.
+4. На запрос «Now let's choose a username for your bot» — введи уникальный
+   username, обязательно заканчивающийся на `bot`, например:
+   `my_hr_screening_bot`.
+5. Сохрани выданный `access_token` (формата
+   `1234567890:AAEhBP0avxxxxxxxxxxxxxxxxxxxxxxxxxxx`) — он понадобится в
+   `credentials.local.yml`.
+
+### 2. Поднять публичный HTTPS-туннель
+
+Telegram шлёт webhook'и только на **HTTPS-эндпоинт**, поэтому `localhost:5005`
+напрямую недоступен. Самый быстрый способ — `ngrok` (или `cloudflared`):
+
+```bash
+# macOS:
+brew install ngrok
+ngrok config add-authtoken <твой ngrok auth token>   # один раз, см. dashboard.ngrok.com
+ngrok http 5005
+```
+
+В выводе будет строка вроде `Forwarding https://abcd-1234.ngrok-free.app ->
+http://localhost:5005`. **Скопируй HTTPS-URL** — это `<public-host>` для
+webhook'a.
+
+> Альтернатива: `cloudflared tunnel --url http://localhost:5005` (Cloudflare
+> Tunnel, не требует регистрации).
+
+### 3. Настроить `credentials.local.yml`
+
+В корне `03_hr_bot/` уже лежит закоммиченный шаблон `credentials.yml` (с
+`${TELEGRAM_BOT_TOKEN}`-подстановками для CI/env-варианта) и пример
+`credentials.local.yml.example`. Для локального запуска:
+
+```bash
+cd 03_hr_bot
+cp credentials.local.yml.example credentials.local.yml
+# отредактируй credentials.local.yml — подставь реальные значения:
+```
+
+```yaml
+# credentials.local.yml (gitignored, реальный токен)
+telegram:
+  access_token: "1234567890:AAEhBP0avxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  verify: "my_hr_screening_bot"        # username бота из @BotFather, без @
+  webhook_url: "https://abcd-1234.ngrok-free.app/webhooks/telegram/webhook"
+rest:
+```
+
+`webhook_url` = HTTPS-URL твоего туннеля + путь `/webhooks/telegram/webhook`
+(стандартный путь коннектора).
+
+> `credentials.local.yml` уже добавлен в корневой `.gitignore` (вместе с
+> глобом `**/credentials.local.yml`) — токен в репо не попадёт.
+
+### 4. Запустить бота с Telegram-каналом
+
+```bash
+# Терминал 1 — туннель
+ngrok http 5005
+
+# Терминал 2 — action server (порт 5055)
+/Users/fedorbogomolov/Desktop/examples/.venv/bin/rasa run actions --port 5055
+
+# Терминал 3 — основной сервер с Telegram-коннектором
+/Users/fedorbogomolov/Desktop/examples/.venv/bin/rasa run \
+    --enable-api --cors "*" --port 5005 \
+    --credentials credentials.local.yml
+```
+
+При старте RASA сама зарегистрирует webhook у Telegram (увидишь в логах
+`Starting Telegram polling thread` или `Webhook for Telegram set`).
+
+### 5. Проверить работу
+
+В Telegram открой чат со своим ботом (`@my_hr_screening_bot`) и отправь
+`/start`. Бот должен ответить `utter_greet`
+(«Привет! Я HR-ассистент…»). Затем напиши «Хочу пройти собеседование» —
+поедет тот же `interview_form`, что и в REST-сценариях выше.
+
+### Troubleshooting
+
+- **Бот не отвечает**: проверь, что webhook реально зарегистрирован у Telegram:
+  ```bash
+  curl https://api.telegram.org/bot<TOKEN>/getWebhookInfo
+  ```
+  В ответе `url` должен совпадать с `webhook_url` из `credentials.local.yml`,
+  `last_error_message` — пустой. Если `url` пустой — RASA не достучался до
+  Telegram при старте; проверь, что `access_token` валиден.
+- **`getWebhookInfo` показывает старый ngrok-URL**: после рестарта `ngrok http
+  5005` URL меняется. Обнови `webhook_url` в `credentials.local.yml` и
+  перезапусти `rasa run`. Можно вручную сбросить:
+  ```bash
+  curl https://api.telegram.org/bot<TOKEN>/deleteWebhook
+  ```
+- **`ngrok` упал / закончилась бесплатная сессия**: подними заново, скопируй
+  новый HTTPS-URL, обнови `credentials.local.yml`, перезапусти `rasa run`.
+- **`401 Unauthorized` от Telegram**: токен неверный или отозван. Сходи к
+  @BotFather → `/mybots` → выбери бота → `API Token` → `Revoke current token`,
+  получи новый, обнови `credentials.local.yml`.
+- **Бот видит сообщения, но молчит**: action server не поднят (`lsof -i:5055`
+  пусто) или модель не обучена (`make train`).
+- **Ошибка `Address already in use`**: на порту 5005/5055 уже что-то висит —
+  `lsof -i:5005 -t | xargs kill -9` (аналогично 5055).
+
 ## Структура файлов
 
 ```
