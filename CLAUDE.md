@@ -6,7 +6,7 @@
 Структура:
 - `01_hello_bot/` — пример «hello world». **Не редактировать.**
 - `02_phones_bot/` — пример с формами и lookup-таблицей. **Не редактировать.** Используется как референс по структуре и pipeline.
-- `03_hr_bot/` — HR-бот, который строим по серии промптов (см. `HR_BOT_CLAUDE_CODE_PROMPTS.md`).
+- `03_hr_bot/` — HR-бот, пример «полного цикла»: форма с per-slot валидацией (`FormValidationAction`), decision-action на CSV (`roles_requirements.csv` + `ActionAssessCandidate`), sad-paths (`restart_interview`/`out_of_scope` внутри формы), регрессионные тесты (`tests/test_stories.yml` + `pytest`) и `Makefile` (`make all`). Разбор по итерациям — `HR_BOT_CLAUDE_CODE_PROMPTS.md`; финальная документация — `03_hr_bot/README.md`.
 
 ## Стек и язык
 - **Python 3.10**, **RASA 3.6.x** (см. `SETUP_PYTHON.md` / `SETUP_ANACONDA.md`).

@@ -376,10 +376,10 @@ happy-path и редкие отклонения (например, повтор 
    → `test(hr-bot): add regression tests for stories and action unit tests` — ✅ реализован
 9. **README** — описание сценариев, схема CSV, инструкция запуска (с поправкой
    на `./.venv/bin/rasa`), таблица интентов/слотов, ссылка на `DESIGN.md`.
-   → `docs(hr-bot): add README with run instructions and design overview`
+   → `docs(hr-bot): final README, demo checklist, and PR` — ✅ реализован
 10. **PR `feat/hr-bot` → `main`** — финальный `PR_BODY.md`, чек-лист
     test plan, ссылка на `DESIGN.md` и Conventional-история коммитов.
-    → `chore(hr-bot): finalize PR body and open pull request`
+    → совмещено с шагом 9 — ✅ PR #1 открыт
 
 После каждой итерации — `/rasa-check` (валидация + короткое обучение),
 затем `/ship feat: ...` по правилу из `CLAUDE.md`.
