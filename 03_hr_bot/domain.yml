@@ -1,8 +1,9 @@
 version: "3.1"
 
 # ── Intents — намерения пользователя ───────────────────────────────────────────
-# На скелете подключаем минимальный набор. Остальные интенты из DESIGN.md
-# (inform, ask_about_role, thank) добавим в Промптах 3+.
+# Промпт 3: подключаем `inform` (свободный ответ внутри формы; здесь
+# используется для выбора desired_role через entity `role`).
+# Остальные интенты из DESIGN.md (ask_about_role, thank) добавим в Промптах 3+.
 intents:
   - greet
   - goodbye
@@ -12,11 +13,14 @@ intents:
   - restart_interview
   - affirm
   - deny
+  - inform
 
 # ── Entities — извлекаемые сущности ────────────────────────────────────────────
-# На этапе скелета entities не используем. Сущности role/skill/email/…
-# заведём в следующих промптах вместе с lookup-таблицами.
-entities: []
+# Промпт 3: добавили entity `role` (lookup + synonyms нормализуют значения
+# к каноническим pm/da/de/ds/mlops). Остальные (full_name, email, skill,
+# years_experience, salary_amount) подключим в следующих промптах.
+entities:
+  - role
 
 # ── Slots — память диалога ─────────────────────────────────────────────────────
 # ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
@@ -36,10 +40,17 @@ slots:
       - type: from_text
 
   desired_role:
-    type: text
-    influence_conversation: false
+    type: categorical
+    values:
+      - pm
+      - da
+      - de
+      - ds
+      - mlops
+    influence_conversation: true
     mappings:
-      - type: from_text
+      - type: from_entity
+        entity: role
 
   years_experience:
     type: text
@@ -85,12 +96,32 @@ responses:
   utter_ask_start_interview:
     - text: "Готовы начать собеседование? Напишите «да» или «начать»."
 
+  # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
+  utter_ask_desired_role:
+    - text: "На какую роль вы претендуете?"
+      buttons:
+        - title: "Project Manager"
+          payload: '/inform{"role":"pm"}'
+        - title: "Data Analyst"
+          payload: '/inform{"role":"da"}'
+        - title: "Data Engineer"
+          payload: '/inform{"role":"de"}'
+        - title: "Data Scientist"
+          payload: '/inform{"role":"ds"}'
+        - title: "MLOps Engineer"
+          payload: '/inform{"role":"mlops"}'
+
+  # Промпт 3: подтверждение выбора роли. {desired_role} — каноническое значение слота.
+  utter_role_chosen:
+    - text: "Записал, рассматриваем тебя как {desired_role}."
+
 # ── Forms — slot filling ───────────────────────────────────────────────────────
 # Скелет: required_slots пуст. Реальный порядок (desired_role → … → expected_salary)
 # заполним в Промптах 3–6 по DESIGN.md §6.
 forms:
   interview_form:
-    required_slots: []
+    required_slots:
+      - desired_role  # Промпт 3: первый реальный слот формы.
 
 # ── Custom actions — регистрация ───────────────────────────────────────────────
 # Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.

@@ -111,3 +111,182 @@ nlu:
     - Не буду отвечать
     - Не надо
     - Нет, спасибо
+
+# ── Inform — свободный ответ в форме (Промпт 3: только entity `role`) ──────────
+# Канонические значения роли (pm/da/de/ds/mlops) проставляются:
+#  • либо прямо в аннотации (`[pm](role)`),
+#  • либо через synonym-секции ниже (например, `[датасаентист](role:ds)`).
+# Минимум 20 примеров с разнообразной формулировкой.
+
+- intent: inform
+  examples: |
+    - Хочу как [Data Scientist](role:ds)
+    - [мл-опс](role:mlops)
+    - попробую [pm](role)
+    - Я [data engineer](role:de)
+    - [Data Analyst](role:da), пожалуйста
+    - Иду на [ds](role)
+    - [Project Manager](role:pm)
+    - буду пробовать [аналитика данных](role:da)
+    - [MLOps Engineer](role:mlops)
+    - Меня интересует роль [дата-инженера](role:de)
+    - откликаюсь на [data scientist](role:ds)
+    - хочу [проджект](role:pm)
+    - давайте [de](role)
+    - выбираю [mlops](role)
+    - я [датасаентист](role:ds)
+    - смотрю на позицию [DA](role:da)
+    - подаюсь как [data engineer](role:de)
+    - роль — [продакт менеджер](role:pm)
+    - можно [млопс](role:mlops)
+    - тестируюсь на [DS](role:ds)
+    - выбираю позицию [аналитик](role:da)
+    - хотел бы [pm](role)
+    - давайте [data analyst](role:da)
+    - откликнусь на [data scientist](role:ds)
+    - я инженер данных — [de](role)
+    - роль [mlops](role)
+
+# ── Lookup table: role ────────────────────────────────────────────────────────
+# Полный список форм (canonical + EN + RU + abbreviations + cyrillic transliter.)
+# EntitySynonymMapper нормализует значения к pm/da/de/ds/mlops через synonym-блоки ниже.
+
+- lookup: role
+  examples: |
+    - pm
+    - PM
+    - project manager
+    - Project Manager
+    - продакт менеджер
+    - проджект менеджер
+    - проджект-менеджер
+    - проджект
+    - продакт
+    - менеджер проекта
+    - руководитель проекта
+    - пм
+    - da
+    - DA
+    - data analyst
+    - Data Analyst
+    - дата аналитик
+    - дата-аналитик
+    - аналитик данных
+    - аналитик
+    - data-аналитик
+    - да
+    - даталитик
+    - de
+    - DE
+    - data engineer
+    - Data Engineer
+    - дата инженер
+    - дата-инженер
+    - инженер данных
+    - data-инженер
+    - датаинженер
+    - де
+    - data eng
+    - ds
+    - DS
+    - data scientist
+    - Data Scientist
+    - датасаентист
+    - дата сайентист
+    - дата-сайентист
+    - сайентист
+    - data-сайентист
+    - дс
+    - data sci
+    - mlops
+    - MLOps
+    - MLOps Engineer
+    - mlops engineer
+    - млопс
+    - мл-опс
+    - мл опс
+    - ml ops
+    - ml-ops
+    - mlops инженер
+    - млопс инженер
+    - млопс-инженер
+
+# ── Synonyms: нормализация к 5 каноническим значениям ─────────────────────────
+
+- synonym: pm
+  examples: |
+    - PM
+    - pm
+    - ПМ
+    - пм
+    - project manager
+    - Project Manager
+    - продакт менеджер
+    - продакт-менеджер
+    - продакт
+    - проджект менеджер
+    - проджект-менеджер
+    - проджект
+    - менеджер проекта
+    - руководитель проекта
+
+- synonym: da
+  examples: |
+    - DA
+    - da
+    - ДА
+    - да
+    - data analyst
+    - Data Analyst
+    - дата аналитик
+    - дата-аналитик
+    - аналитик данных
+    - аналитик
+    - data-аналитик
+    - даталитик
+
+- synonym: de
+  examples: |
+    - DE
+    - de
+    - ДЕ
+    - де
+    - data engineer
+    - Data Engineer
+    - дата инженер
+    - дата-инженер
+    - инженер данных
+    - data-инженер
+    - датаинженер
+    - data eng
+
+- synonym: ds
+  examples: |
+    - DS
+    - ds
+    - ДС
+    - дс
+    - data scientist
+    - Data Scientist
+    - датасаентист
+    - дата сайентист
+    - дата-сайентист
+    - сайентист
+    - data-сайентист
+    - data sci
+
+- synonym: mlops
+  examples: |
+    - MLOps
+    - mlops
+    - МЛОПС
+    - млопс
+    - мл-опс
+    - мл опс
+    - ml ops
+    - ml-ops
+    - MLOps Engineer
+    - mlops engineer
+    - mlops инженер
+    - млопс инженер
+    - млопс-инженер

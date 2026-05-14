@@ -4,6 +4,12 @@ language: ru
 
 pipeline:
 - name: WhitespaceTokenizer
+  # Признаки из lookup-таблиц/regex (sparse-фичи для DIET, БЕЗ извлечения сущностей).
+  # Промпт 3: нужен, чтобы DIET «видел» role-lookup как фичу.
+  # RegexEntityExtractor намеренно НЕ добавляем (DESIGN.md §9): он конфликтует с DIET
+  # на подстрочных названиях и перезаписывает более длинное значение DIET более
+  # коротким из lookup. RegexFeaturizer таких проблем не создаёт — только sparse-фичи.
+- name: RegexFeaturizer
   # Символьные n-граммы: улучшают распознавание при опечатках и падежных формах
 - name: CountVectorsFeaturizer
   analyzer: char_wb
@@ -11,10 +17,8 @@ pipeline:
   max_ngram: 4
 - name: CountVectorsFeaturizer
   analyzer: word
-  # Классификатор интентов + теггер сущностей (DIET = Dual Intent and Entity Transformer)
-  # DIET сам использует lookup tables как признаки через CountVectorsFeaturizer выше.
-  # RegexEntityExtractor намеренно НЕ добавляем: он конфликтует с DIET на подстрочных
-  # названиях и перезаписывает более длинное значение DIET более коротким из lookup.
+  # Классификатор интентов + теггер сущностей (DIET = Dual Intent and Entity Transformer).
+  # DIET использует lookup tables через RegexFeaturizer выше (sparse-фичи).
 - name: DIETClassifier
   epochs: 100
   constrain_similarities: true

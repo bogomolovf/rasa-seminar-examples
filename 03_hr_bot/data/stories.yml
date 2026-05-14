@@ -2,17 +2,26 @@ version: "3.1"
 
 stories:
 
-# Простейший happy-path: пользователь поздоровался и сразу запустил интервью.
-# Слоты на этом этапе не заполняем — required_slots формы пуст, форма
-# деактивируется на первом же ходу. В Промптах 3+ перепишем под реальный порядок.
-- story: Приветствие и запуск интервью
+# Промпт 3: happy-path — пользователь поздоровался, согласился на интервью и
+# выбрал роль кнопкой/текстом. Форма заполняет desired_role и завершается.
+- story: Приветствие и запуск интервью с выбором роли
   steps:
   - intent: greet
   - action: utter_greet
   - intent: start_interview
   - action: interview_form
   - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: pm
+  - slot_was_set:
+    - desired_role: pm
+  - action: interview_form
   - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_role_chosen
 
 # Пользователь подтверждает готовность через affirm после вопроса бота.
 - story: Согласие на старт интервью
@@ -32,3 +41,42 @@ stories:
   - action: action_reset_interview
   - intent: goodbye
   - action: utter_goodbye
+
+# Промпт 3: пользователь нажал на кнопку Data Scientist — пришёл `/inform{"role":"ds"}`.
+# ВАЖНО: имя сущности `role` совпадает с зарезервированным ключом entity-role в
+# story-формате, поэтому используем полный dict-вид (`entity:`/`value:`), а не
+# shorthand `- role: ds` — иначе reader спутает имя сущности с ролью.
+- story: Выбор роли через кнопку (ds)
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_role_chosen
+
+# Промпт 3: пользователь напечатал «Я data engineer» — entity нормализован synonym'ом к de.
+- story: Выбор роли текстом (de)
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: de
+  - slot_was_set:
+    - desired_role: de
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_role_chosen

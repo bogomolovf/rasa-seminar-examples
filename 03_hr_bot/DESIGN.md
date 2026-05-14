@@ -350,10 +350,10 @@ happy-path и редкие отклонения (например, повтор 
 1. **Скелет проекта** — `rasa init`-стиль: `config.yml`, пустые `domain.yml`,
    `data/nlu.yml`, `data/stories.yml`, `data/rules.yml`, `actions/actions.py`,
    `roles_requirements.csv` с готовыми данными.
-   → `feat(hr-bot): scaffold project skeleton`
+   → `feat(hr-bot): scaffold project skeleton` — ✅ реализован
 2. **Слот `desired_role` с кнопками** — intent `start_interview`, entity `role`
    + lookup + synonyms, slot categorical, форма с одним required slot, кнопки.
-   → `feat(hr-bot): add desired_role slot with button choices`
+   → `feat(hr-bot): collect desired_role via buttons and free text` — ✅ реализован
 3. **Имя + email + валидация формы** — entity `full_name`, `email` (regex
    через DIET), slots `candidate_name`/`candidate_email`,
    `validate_interview_form` (skeleton), `utter_*_invalid`.

@@ -32,6 +32,20 @@ rules:
   - action: interview_form
   - active_loop: interview_form
 
+# ── Завершение формы — подтверждение выбранной роли ───────────────────────────
+# Промпт 3: после заполнения всех required_slots формы (пока — только desired_role)
+# показываем utter_role_chosen. `action_assess_candidate` подключим в Промпте 7.
+
+- rule: Завершение interview_form — подтверждение роли
+  condition:
+  - active_loop: interview_form
+  steps:
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_role_chosen
+
 # ── Сброс интервью ─────────────────────────────────────────────────────────────
 
 - rule: Перезапуск интервью
