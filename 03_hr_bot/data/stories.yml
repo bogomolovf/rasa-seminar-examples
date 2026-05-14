@@ -2,9 +2,10 @@ version: "3.1"
 
 stories:
 
-# Промпт 4: happy-path формы — кандидат проходит все 3 текущих обязательных слота
-# (candidate_name → candidate_email → desired_role) и форма завершается.
-- story: Приветствие и полный проход формы (имя → email → роль)
+# Промпт 5: happy-path формы — кандидат проходит все 5 текущих обязательных слотов
+# (candidate_name → candidate_email → desired_role → years_experience → skills)
+# и форма завершается.
+- story: Приветствие и полный проход формы (имя → email → роль → опыт → навыки)
   steps:
   - intent: greet
   - action: utter_greet
@@ -32,6 +33,22 @@ stories:
   - slot_was_set:
     - desired_role: pm
   - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: SQL
+  - slot_was_set:
+    - skills: ["python", "sql"]
+  - action: interview_form
   - active_loop: null
   - slot_was_set:
     - requested_slot: null
@@ -56,9 +73,9 @@ stories:
   - intent: goodbye
   - action: utter_goodbye
 
-# Промпт 4: пользователь нажал на кнопку Data Scientist — пришёл `/inform{"role":"ds"}`
-# после того как уже ввёл имя и email.
-- story: Выбор роли через кнопку (ds) после имени и email
+# Промпт 5: пользователь нажал на кнопку Data Scientist — пришёл `/inform{"role":"ds"}`
+# после того как уже ввёл имя и email; затем опыт и навыки.
+- story: Полный проход формы для DS (кнопка) с опытом и навыками
   steps:
   - intent: start_interview
   - action: interview_form
@@ -84,13 +101,31 @@ stories:
   - slot_was_set:
     - desired_role: ds
   - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "3"
+  - slot_was_set:
+    - years_experience: 3.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: PyTorch
+      - entity: skill
+        value: pandas
+  - slot_was_set:
+    - skills: ["python", "pytorch", "pandas"]
+  - action: interview_form
   - active_loop: null
   - slot_was_set:
     - requested_slot: null
   - action: utter_role_chosen
 
-# Промпт 4: пользователь напечатал «Я data engineer» — entity нормализован synonym'ом к de.
-- story: Выбор роли текстом (de) после имени и email
+# Промпт 5: пользователь напечатал «Я data engineer» — entity нормализован synonym'ом к de.
+- story: Полный проход формы для DE (текст) с опытом и навыками
   steps:
   - intent: start_interview
   - action: interview_form
@@ -115,6 +150,24 @@ stories:
         value: de
   - slot_was_set:
     - desired_role: de
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "7"
+  - slot_was_set:
+    - years_experience: 7.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Spark
+      - entity: skill
+        value: Airflow
+      - entity: skill
+        value: Kafka
+  - slot_was_set:
+    - skills: ["spark", "airflow", "kafka"]
   - action: interview_form
   - active_loop: null
   - slot_was_set:

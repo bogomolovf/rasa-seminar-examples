@@ -13,6 +13,14 @@ nlu:
   examples: |
     - [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
+# Промпт 5: regex для сущности `years_experience`. Матчит 1–2-значное число —
+# достаточно широко, чтобы покрыть «5», «10», «3 года» (без «3.5» — дробные
+# годы редкость и парсинг внутри validate_years_experience всё равно срежет
+# мусор регулярным выражением \d+(?:[.,]\d+)?).
+- regex: years_experience
+  examples: |
+    - \b\d{1,2}\b
+
 # ── Приветствие ────────────────────────────────────────────────────────────────
 
 - intent: greet
@@ -179,6 +187,131 @@ nlu:
     - [yulia@bk.ru](email)
     - [john.doe@test.com](email)
     - [a.b.c@sub.domain.co](email)
+    - У меня [5](years_experience) лет опыта
+    - [3](years_experience) года в IT
+    - опыт [7](years_experience) лет
+    - всего [1](years_experience) год
+    - работаю [10](years_experience) лет
+    - стаж [2](years_experience) года
+    - около [4](years_experience) лет в ML
+    - Знаю [Python](skill) и [SQL](skill)
+    - Работал с [Spark](skill), [Airflow](skill), [Kafka](skill)
+    - Стек\: [pandas](skill), [scikit-learn](skill), [PyTorch](skill)
+    - Использую [Docker](skill) и [Kubernetes](skill)
+    - Пишу на [Python](skill), знаю [pandas](skill) и [NumPy](skill)
+    - Владею [TensorFlow](skill), [Keras](skill), [XGBoost](skill)
+    - Опыт с [MLflow](skill), [DVC](skill), [Airflow](skill)
+    - Работаю с [Tableau](skill) и [Power BI](skill)
+    - В стеке [Scala](skill), [Spark](skill), [Hadoop](skill)
+    - Знаком с [BERT](skill), [transformers](skill), [LLM](skill)
+    - Разрабатывал на [Java](skill) и [Go](skill)
+    - [2 года](years_experience), [Python](skill), [SQL](skill)
+    - [3](years_experience) года опыта, владею [PyTorch](skill) и [pandas](skill)
+    - Стаж [5](years_experience) лет, стек\: [Python](skill), [Spark](skill), [Airflow](skill)
+
+# ── Lookup table: skill ───────────────────────────────────────────────────────
+# Промпт 5: канонические названия навыков. Регистр близок к общеупотребимому
+# (lowercase для языков/тулзов; CamelCase для брендов «PyTorch», «TensorFlow»).
+# Synonyms ниже приводят русские/транслитерированные варианты к канонике;
+# validate_skills дополнительно lowercased, поэтому матч кейс-инсенситивен.
+
+- lookup: skill
+  examples: |
+    - Python
+    - SQL
+    - Java
+    - Scala
+    - Go
+    - Bash
+    - pandas
+    - NumPy
+    - Spark
+    - Dask
+    - scikit-learn
+    - PyTorch
+    - TensorFlow
+    - Keras
+    - XGBoost
+    - LightGBM
+    - CatBoost
+    - NLP
+    - CV
+    - LLM
+    - RAG
+    - transformers
+    - BERT
+    - GPT
+    - Airflow
+    - Kafka
+    - ClickHouse
+    - Snowflake
+    - dbt
+    - Hadoop
+    - HDFS
+    - Docker
+    - Kubernetes
+    - MLflow
+    - DVC
+    - Weights & Biases
+    - AWS
+    - GCP
+    - Tableau
+    - Power BI
+    - A/B-testing
+    - статистика
+    - метрики
+
+# ── Synonyms: нормализация навыков к канонике из lookup ───────────────────────
+
+- synonym: Python
+  examples: |
+    - python
+    - Python
+    - питон
+    - пайтон
+
+- synonym: SQL
+  examples: |
+    - sql
+    - SQL
+    - эс-кью-эл
+    - постгрес
+    - postgresql
+    - postgres
+    - mysql
+
+- synonym: PyTorch
+  examples: |
+    - pytorch
+    - PyTorch
+    - torch
+    - торч
+
+- synonym: TensorFlow
+  examples: |
+    - tensorflow
+    - TensorFlow
+    - tf
+    - TF
+
+- synonym: scikit-learn
+  examples: |
+    - sklearn
+    - scikit-learn
+    - склерн
+
+- synonym: Kubernetes
+  examples: |
+    - k8s
+    - kubernetes
+    - Kubernetes
+    - кубер
+
+- synonym: Docker
+  examples: |
+    - docker
+    - Docker
+    - докер
 
 # ── Lookup table: role ────────────────────────────────────────────────────────
 # Полный список форм (canonical + EN + RU + abbreviations + cyrillic transliter.)

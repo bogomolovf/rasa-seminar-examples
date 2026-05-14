@@ -24,6 +24,8 @@ entities:
   - role
   - full_name
   - email
+  - years_experience
+  - skill
 
 # ── Slots — память диалога ─────────────────────────────────────────────────────
 # ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
@@ -71,17 +73,36 @@ slots:
       - type: from_entity
         entity: role
 
+  # Промпт 5: количество лет опыта — float, чтобы validate_years_experience мог
+  # парсить "5", "3.5", "3 года" в число и сравнивать с порогами в DESIGN.md §7.1.
+  # Приоритетно — entity `years_experience` (regex \b\d{1,2}\b даёт sparse-фичу
+  # для DIET); fallback `from_text` нужен, чтобы валидатор отрабатывал на
+  # «полтора года» / некорректном вводе и форма переспрашивала.
   years_experience:
-    type: text
+    type: float
     influence_conversation: false
+    min_value: 0
+    max_value: 50
     mappings:
+      - type: from_entity
+        entity: years_experience
       - type: from_text
+        conditions:
+          - active_loop: interview_form
+            requested_slot: years_experience
 
+  # Промпт 5: список навыков. List-слот автоматически собирает все entity-значения
+  # `skill` из одного сообщения; валидатор нормализует регистр, дедуплицирует и
+  # отвергает пустой ввод (utter_invalid_skills).
+  # NB: `initial_value: []` намеренно НЕ ставим — иначе форма считает слот уже
+  # заполненным (`[] != None`) и пропускает вопрос про навыки. Слот стартует
+  # с None и заполняется через from_entity / валидатор.
   skills:
-    type: text
+    type: list
     influence_conversation: false
     mappings:
-      - type: from_text
+      - type: from_entity
+        entity: skill
 
   expected_salary:
     type: text
@@ -128,6 +149,19 @@ responses:
   utter_invalid_email:
     - text: "Email выглядит странно, проверь, пожалуйста."
 
+  # Промпт 5: вопросы и ошибки для слотов years_experience / skills.
+  utter_ask_years_experience:
+    - text: "Сколько лет опыта работы в IT/ML у тебя? (число)"
+
+  utter_ask_skills:
+    - text: "Перечисли ключевые навыки через запятую (Python, SQL, ML-фреймворки и т.п.)."
+
+  utter_invalid_experience:
+    - text: "Опыт должен быть числом от 0 до 50. Попробуй ещё раз."
+
+  utter_invalid_skills:
+    - text: "Не понял ни одного навыка. Назови хотя бы один из стандартных: Python, SQL, Spark…"
+
   # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
   utter_ask_desired_role:
     - text: "На какую роль вы претендуете?"
@@ -158,6 +192,10 @@ forms:
       - candidate_name
       - candidate_email
       - desired_role
+      # Промпт 5: после роли — опыт и навыки. Опыт спрашиваем перед навыками,
+      # чтобы потом в Промпте 6 (assessment) сразу знать, на что смотреть.
+      - years_experience
+      - skills
 
 # ── Custom actions — регистрация ───────────────────────────────────────────────
 # Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.

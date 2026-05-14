@@ -360,7 +360,7 @@ happy-path и редкие отклонения (например, повтор 
    → `feat(hr-bot): collect candidate name and email with form validation` — ✅ реализован
 4. **Опыт + навыки** — entity `years_experience` (regex), `skill` (lookup),
    slot `years_experience` (float) и `skills` (list), валидаторы.
-   → `feat(hr-bot): collect years_experience and skills`
+   → `feat(hr-bot): capture years of experience and skill list` — ✅ реализован
 5. **Зарплата с гибким парсером** — entity `salary_amount` (regex для
    `200000`, `200к`, `250 000`, `200-250к`), валидатор-нормализатор → float.
    → `feat(hr-bot): collect expected_salary with flexible parser`
