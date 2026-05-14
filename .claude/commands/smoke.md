@@ -6,6 +6,12 @@ allowed-tools: Bash
 
 You are running an end-to-end smoke test for a RASA bot. Steps:
 
+0. **Activate venv** (or use absolute paths) in every Bash invocation that runs rasa:
+   ```bash
+   source /Users/fedorbogomolov/Desktop/examples/.venv/bin/activate
+   ```
+   Each Bash call is a fresh shell — activation does not persist.
+
 1. Determine target bot directory:
    - Use `$ARGUMENTS` if non-empty, else `03_hr_bot`.
    - Verify it has a trained model under `models/`. If not — tell the user to run `/rasa-check` first and stop.
