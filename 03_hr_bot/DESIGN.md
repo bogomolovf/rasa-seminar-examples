@@ -357,7 +357,7 @@ happy-path и редкие отклонения (например, повтор 
 3. **Имя + email + валидация формы** — entity `full_name`, `email` (regex
    через DIET), slots `candidate_name`/`candidate_email`,
    `validate_interview_form` (skeleton), `utter_*_invalid`.
-   → `feat(hr-bot): collect candidate name and email with validation`
+   → `feat(hr-bot): collect candidate name and email with form validation` — ✅ реализован
 4. **Опыт + навыки** — entity `years_experience` (regex), `skill` (lookup),
    slot `years_experience` (float) и `skills` (list), валидаторы.
    → `feat(hr-bot): collect years_experience and skills`

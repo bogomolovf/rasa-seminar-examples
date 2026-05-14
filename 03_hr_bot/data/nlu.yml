@@ -2,6 +2,17 @@ version: "3.1"
 
 nlu:
 
+# ── Regex-фичи для DIET ────────────────────────────────────────────────────────
+# Промпт 4: regex-pattern для сущности `email`. RegexFeaturizer выдаст DIET'у
+# sparse-фичу «это похоже на email», и тот извлечёт сущность по обучающим
+# аннотациям из intent `inform`. Отдельный RegexEntityExtractor намеренно НЕ
+# подключаем (DESIGN.md §9): он конфликтует с DIET. Если pure-DIET не справится
+# на смоке — добавим экстрактор отдельно (см. comment в config.yml).
+
+- regex: email
+  examples: |
+    - [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+
 # ── Приветствие ────────────────────────────────────────────────────────────────
 
 - intent: greet
@@ -146,6 +157,28 @@ nlu:
     - откликнусь на [data scientist](role:ds)
     - я инженер данных — [de](role)
     - роль [mlops](role)
+    - Меня зовут [Иван Петров](full_name)
+    - Я [Мария Иванова](full_name)
+    - Меня зовут [Анна Смирнова](full_name)
+    - Зовут меня [Алексей Кузнецов](full_name)
+    - Это [Дмитрий Соколов](full_name)
+    - [Ольга Васильева](full_name)
+    - [Сергей Морозов](full_name)
+    - Я — [Екатерина Новикова](full_name)
+    - Имя — [Павел Фёдоров](full_name)
+    - Здравствуйте, я [Юлия Михайлова](full_name)
+    - мой email [ivan@example.com](email)
+    - пишите на [maria.ivanova@yandex.ru](email)
+    - [anna@gmail.com](email)
+    - почта [petr.sokolov@mail.ru](email)
+    - можно на [dmitry+ml@gmail.com](email)
+    - [olga_va@outlook.com](email)
+    - вот email — [sergey-m@yahoo.com](email)
+    - [ekaterina.n@company.io](email)
+    - адрес [pavel.fedorov@example.org](email)
+    - [yulia@bk.ru](email)
+    - [john.doe@test.com](email)
+    - [a.b.c@sub.domain.co](email)
 
 # ── Lookup table: role ────────────────────────────────────────────────────────
 # Полный список форм (canonical + EN + RU + abbreviations + cyrillic transliter.)

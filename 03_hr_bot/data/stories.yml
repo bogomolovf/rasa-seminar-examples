@@ -2,15 +2,29 @@ version: "3.1"
 
 stories:
 
-# Промпт 3: happy-path — пользователь поздоровался, согласился на интервью и
-# выбрал роль кнопкой/текстом. Форма заполняет desired_role и завершается.
-- story: Приветствие и запуск интервью с выбором роли
+# Промпт 4: happy-path формы — кандидат проходит все 3 текущих обязательных слота
+# (candidate_name → candidate_email → desired_role) и форма завершается.
+- story: Приветствие и полный проход формы (имя → email → роль)
   steps:
   - intent: greet
   - action: utter_greet
   - intent: start_interview
   - action: interview_form
   - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Иван Петров
+  - slot_was_set:
+    - candidate_name: Иван Петров
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: ivan@example.com
+  - slot_was_set:
+    - candidate_email: ivan@example.com
+  - action: interview_form
   - intent: inform
     entities:
       - entity: role
@@ -42,15 +56,27 @@ stories:
   - intent: goodbye
   - action: utter_goodbye
 
-# Промпт 3: пользователь нажал на кнопку Data Scientist — пришёл `/inform{"role":"ds"}`.
-# ВАЖНО: имя сущности `role` совпадает с зарезервированным ключом entity-role в
-# story-формате, поэтому используем полный dict-вид (`entity:`/`value:`), а не
-# shorthand `- role: ds` — иначе reader спутает имя сущности с ролью.
-- story: Выбор роли через кнопку (ds)
+# Промпт 4: пользователь нажал на кнопку Data Scientist — пришёл `/inform{"role":"ds"}`
+# после того как уже ввёл имя и email.
+- story: Выбор роли через кнопку (ds) после имени и email
   steps:
   - intent: start_interview
   - action: interview_form
   - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Мария Иванова
+  - slot_was_set:
+    - candidate_name: Мария Иванова
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: maria@example.com
+  - slot_was_set:
+    - candidate_email: maria@example.com
+  - action: interview_form
   - intent: inform
     entities:
       - entity: role
@@ -63,12 +89,26 @@ stories:
     - requested_slot: null
   - action: utter_role_chosen
 
-# Промпт 3: пользователь напечатал «Я data engineer» — entity нормализован synonym'ом к de.
-- story: Выбор роли текстом (de)
+# Промпт 4: пользователь напечатал «Я data engineer» — entity нормализован synonym'ом к de.
+- story: Выбор роли текстом (de) после имени и email
   steps:
   - intent: start_interview
   - action: interview_form
   - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Сергей Морозов
+  - slot_was_set:
+    - candidate_name: Сергей Морозов
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: sergey@example.com
+  - slot_was_set:
+    - candidate_email: sergey@example.com
+  - action: interview_form
   - intent: inform
     entities:
       - entity: role

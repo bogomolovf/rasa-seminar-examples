@@ -17,27 +17,46 @@ intents:
 
 # ── Entities — извлекаемые сущности ────────────────────────────────────────────
 # Промпт 3: добавили entity `role` (lookup + synonyms нормализуют значения
-# к каноническим pm/da/de/ds/mlops). Остальные (full_name, email, skill,
-# years_experience, salary_amount) подключим в следующих промптах.
+# к каноническим pm/da/de/ds/mlops).
+# Промпт 4: добавили `full_name` (DIET учится по аннотациям «[Иван Петров](full_name)»)
+# и `email` (regex-feature в DIET; см. nlu.yml).
 entities:
   - role
+  - full_name
+  - email
 
 # ── Slots — память диалога ─────────────────────────────────────────────────────
 # ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
 # influence_conversation: false. Правильные типы (categorical/float/list) и
 # mapping'и (from_entity, custom) проставим в Промптах 3–6.
 slots:
+  # Промпт 4: имя кандидата — пытаемся достать сущность `full_name` (DIET);
+  # если NER не нашёл — берём весь текст ответа (when requested_slot == candidate_name).
   candidate_name:
     type: text
     influence_conversation: false
     mappings:
+      - type: from_entity
+        entity: full_name
       - type: from_text
+        conditions:
+          - active_loop: interview_form
+            requested_slot: candidate_name
 
+  # Промпт 4: email — приоритет на сущность `email` (regex-feature в DIET даёт
+  # точное извлечение); fallback `from_text` нужен, чтобы validate_candidate_email
+  # отрабатывал и на «мусор» вроде «ivan» — иначе слот не выставляется и форма
+  # просто молча переспрашивает, без utter_invalid_email.
   candidate_email:
     type: text
     influence_conversation: false
     mappings:
+      - type: from_entity
+        entity: email
       - type: from_text
+        conditions:
+          - active_loop: interview_form
+            requested_slot: candidate_email
 
   desired_role:
     type: categorical
@@ -96,6 +115,19 @@ responses:
   utter_ask_start_interview:
     - text: "Готовы начать собеседование? Напишите «да» или «начать»."
 
+  # Промпт 4: вопросы формы по имени и email + сообщения о невалидных значениях.
+  utter_ask_candidate_name:
+    - text: "Как тебя зовут? (имя и фамилия)"
+
+  utter_ask_candidate_email:
+    - text: "На какой email отправить материалы?"
+
+  utter_invalid_name:
+    - text: "Похоже, ты ввёл только имя. Напиши, пожалуйста, имя и фамилию."
+
+  utter_invalid_email:
+    - text: "Email выглядит странно, проверь, пожалуйста."
+
   # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
   utter_ask_desired_role:
     - text: "На какую роль вы претендуете?"
@@ -121,7 +153,11 @@ responses:
 forms:
   interview_form:
     required_slots:
-      - desired_role  # Промпт 3: первый реальный слот формы.
+      # Промпт 4: сначала спрашиваем имя и email, потом — роль.
+      # Порядок в required_slots = порядок вопросов формы.
+      - candidate_name
+      - candidate_email
+      - desired_role
 
 # ── Custom actions — регистрация ───────────────────────────────────────────────
 # Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.
