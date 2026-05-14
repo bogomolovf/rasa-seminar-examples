@@ -1,0 +1,106 @@
+version: "3.1"
+
+# ── Intents — намерения пользователя ───────────────────────────────────────────
+# На скелете подключаем минимальный набор. Остальные интенты из DESIGN.md
+# (inform, ask_about_role, thank) добавим в Промптах 3+.
+intents:
+  - greet
+  - goodbye
+  - out_of_scope
+  - bot_challenge
+  - start_interview
+  - restart_interview
+  - affirm
+  - deny
+
+# ── Entities — извлекаемые сущности ────────────────────────────────────────────
+# На этапе скелета entities не используем. Сущности role/skill/email/…
+# заведём в следующих промптах вместе с lookup-таблицами.
+entities: []
+
+# ── Slots — память диалога ─────────────────────────────────────────────────────
+# ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
+# influence_conversation: false. Правильные типы (categorical/float/list) и
+# mapping'и (from_entity, custom) проставим в Промптах 3–6.
+slots:
+  candidate_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  candidate_email:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  desired_role:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  years_experience:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  skills:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  expected_salary:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+  assessment_decision:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_text
+
+# ── Responses — ответы бота ────────────────────────────────────────────────────
+responses:
+  utter_greet:
+    - text: "Привет! Я HR-ассистент команды ML. Помогу пройти первичный скрининг на одну из 5 ролей. Хотите начать собеседование?"
+
+  utter_goodbye:
+    - text: "До свидания! Если передумаете — напишите «начать», и мы продолжим."
+
+  utter_out_of_scope:
+    - text: "Я провожу только HR-скрининг на ML-роли. Напишите «начать», чтобы перейти к интервью, или «пока» — чтобы закончить."
+
+  utter_iamabot:
+    - text: "Я бот-ассистент HR-команды. Провожу первичный скрининг на роли PM, DA, DE, DS и MLOps."
+
+  utter_introduce_bot:
+    - text: "Я HR-ассистент команды ML. Задам несколько вопросов о роли, опыте, навыках и зарплатных ожиданиях — и подскажу, подходите ли вы."
+
+  utter_ask_start_interview:
+    - text: "Готовы начать собеседование? Напишите «да» или «начать»."
+
+# ── Forms — slot filling ───────────────────────────────────────────────────────
+# Скелет: required_slots пуст. Реальный порядок (desired_role → … → expected_salary)
+# заполним в Промптах 3–6 по DESIGN.md §6.
+forms:
+  interview_form:
+    required_slots: []
+
+# ── Custom actions — регистрация ───────────────────────────────────────────────
+# Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.
+actions:
+  - action_reset_interview
+  - action_assess_candidate
+  - action_offer_alternative_role
+  - validate_interview_form
+
+# ── Session config ─────────────────────────────────────────────────────────────
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: false  # каждая сессия начинается с чистых слотов
