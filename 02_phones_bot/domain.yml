@@ -1,0 +1,61 @@
+version: "3.1"
+
+# Интенты — типы намерений пользователя
+intents:
+  - greet
+  - goodbye
+  - ask_phone_specs
+  - ask_specific_spec
+  - inform
+  - out_of_scope
+
+# Сущности, извлекаемые из текста
+entities:
+  - phone_model
+  - spec_type
+
+# Слоты — память диалога между шагами
+slots:
+  phone_model:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: phone_model
+
+  spec_type:
+    type: text
+    influence_conversation: false  # не влияет на выбор следующего действия
+    mappings:
+      - type: from_entity
+        entity: spec_type
+
+# Ответы бота
+responses:
+  utter_greet:
+    - text: "Привет! Я помогу узнать характеристики смартфонов.\nСпросите, например: «Расскажи про iPhone 15» или «Какая камера у Pixel 8?»"
+
+  utter_goodbye:
+    - text: "До свидания! Если понадобится сравнить телефоны — обращайтесь."
+
+  utter_ask_phone_model:
+    - text: "Уточните, пожалуйста, модель телефона?"
+    - text: "Какой телефон вас интересует?"
+    - text: "Назовите модель — и я расскажу подробнее."
+
+  utter_out_of_scope:
+    - text: "Я специализируюсь только на характеристиках смартфонов. Попробуйте спросить: «Расскажи про Galaxy S24»."
+
+# Формы — механизм slot filling: собирают обязательные слоты перед выполнением action
+forms:
+  phone_form:
+    required_slots:
+      - phone_model  # если не указана в сообщении — бот переспросит
+
+# Custom actions, реализованные в actions/actions.py
+actions:
+  - action_get_phone_specs
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: false  # сбрасывать слоты между сессиями

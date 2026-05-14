@@ -1,0 +1,33 @@
+version: "3.1"
+
+# Интенты — типы намерений пользователя, которые распознаёт NLU
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - out_of_scope
+
+# Ответы бота — шаблоны utterance-действий
+responses:
+  utter_greet:
+    - text: "Привет! Я учебный бот. Чем могу помочь?"
+    - text: "Здравствуйте! Рад вас видеть."
+
+  utter_goodbye:
+    - text: "До свидания! Хорошего дня."
+    - text: "Пока! Буду рад помочь снова."
+
+  utter_affirm:
+    - text: "Отлично, принято!"
+
+  utter_deny:
+    - text: "Хорошо, как скажете."
+
+  utter_out_of_scope:
+    - text: "Я простой учебный бот — пока умею только здороваться и прощаться."
+
+# Политики диалогового менеджера
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

@@ -1,0 +1,38 @@
+recipe: default.v1
+
+language: ru
+
+# NLU pipeline: цепочка компонентов для обработки текста
+pipeline:
+  # Токенизатор по пробелам — быстро, без внешних зависимостей
+  - name: WhitespaceTokenizer
+  # Извлечение n-граммных признаков из символов (устойчиво к опечаткам)
+  - name: CountVectorsFeaturizer
+    analyzer: char_wb
+    min_ngram: 2
+    max_ngram: 4
+  # Извлечение признаков из слов
+  - name: CountVectorsFeaturizer
+    analyzer: word
+  # Классификатор интентов и теггер сущностей
+  - name: DIETClassifier
+    epochs: 100
+    constrain_similarities: true
+  # Ответ «не знаю» при низкой уверенности NLU
+  - name: FallbackClassifier
+    threshold: 0.7
+    ambiguity_threshold: 0.1
+
+# Политики диалогового менеджера
+policies:
+  # Запоминает последние N шагов диалога
+  - name: MemoizationPolicy
+    max_history: 3
+  # Следует явно заданным rules.yml
+  - name: RulePolicy
+    core_fallback_threshold: 0.4
+    core_fallback_action_name: utter_out_of_scope
+  # Обучаемая политика на основе трансформера
+  - name: TEDPolicy
+    max_history: 5
+    epochs: 100

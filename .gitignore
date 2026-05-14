@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# RASA
+models/
+.rasa/
+results/
+*.tar.gz
+
+# macOS
+.DS_Store

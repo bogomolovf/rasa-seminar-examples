@@ -1,0 +1,37 @@
+recipe: default.v1
+
+language: ru
+
+pipeline:
+- name: WhitespaceTokenizer
+  # Символьные n-граммы: улучшают распознавание при опечатках и падежных формах
+- name: CountVectorsFeaturizer
+  analyzer: char_wb
+  min_ngram: 2
+  max_ngram: 4
+- name: CountVectorsFeaturizer
+  analyzer: word
+  # Классификатор интентов + теггер сущностей (DIET = Dual Intent and Entity Transformer)
+  # DIET сам использует lookup tables как признаки через CountVectorsFeaturizer выше.
+  # RegexEntityExtractor намеренно НЕ добавляем: он конфликтует с DIET на подстрочных
+  # названиях (например, "iPhone 15 Pro" vs lookup-запись "iPhone 15") и перезаписывает
+  # более длинное значение DIET более коротким из lookup.
+- name: DIETClassifier
+  epochs: 100
+  constrain_similarities: true
+  # Нормализует синонимы к каноническим именам (camera, battery, …)
+- name: EntitySynonymMapper
+- name: FallbackClassifier
+  threshold: 0.7
+  ambiguity_threshold: 0.1
+
+policies:
+- name: MemoizationPolicy
+  max_history: 5
+- name: RulePolicy
+  core_fallback_threshold: 0.4
+  core_fallback_action_name: utter_out_of_scope
+- name: TEDPolicy
+  max_history: 5
+  epochs: 100
+assistant_id: 20260420-220100-coal-value

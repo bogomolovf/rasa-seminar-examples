@@ -1,0 +1,66 @@
+version: "3.1"
+
+stories:
+
+# Пользователь сразу называет модель — форма заполняется мгновенно
+- story: Запрос характеристик с моделью в сообщении
+  steps:
+  - intent: ask_phone_specs
+    entities:
+      - phone_model: "iPhone 15"
+  - action: phone_form
+  - active_loop: phone_form
+  - active_loop: null
+  - slot_was_set:
+    - phone_model: "iPhone 15"
+  - action: action_get_phone_specs
+
+# Пользователь не называет модель — бот переспрашивает
+- story: Запрос без модели — бот переспрашивает
+  steps:
+  - intent: ask_phone_specs
+  - action: phone_form
+  - active_loop: phone_form
+  - slot_was_set:
+    - requested_slot: phone_model
+  - intent: inform
+    entities:
+      - phone_model: "Galaxy S24"
+  - action: phone_form
+  - active_loop: null
+  - slot_was_set:
+    - phone_model: "Galaxy S24"
+  - action: action_get_phone_specs
+
+# Пользователь спрашивает конкретную характеристику с моделью
+- story: Запрос конкретной характеристики с моделью
+  steps:
+  - intent: ask_specific_spec
+    entities:
+      - phone_model: "Pixel 8"
+      - spec_type: "camera"
+  - action: phone_form
+  - active_loop: phone_form
+  - active_loop: null
+  - slot_was_set:
+    - phone_model: "Pixel 8"
+  - action: action_get_phone_specs
+
+# Пользователь спрашивает характеристику без модели — бот переспрашивает
+- story: Запрос характеристики без модели — бот переспрашивает
+  steps:
+  - intent: ask_specific_spec
+    entities:
+      - spec_type: "battery"
+  - action: phone_form
+  - active_loop: phone_form
+  - slot_was_set:
+    - requested_slot: phone_model
+  - intent: inform
+    entities:
+      - phone_model: "OnePlus 12"
+  - action: phone_form
+  - active_loop: null
+  - slot_was_set:
+    - phone_model: "OnePlus 12"
+  - action: action_get_phone_specs

@@ -1,0 +1,11 @@
+model,brand,screen,camera,battery,ram,storage,processor,price
+iPhone 15,Apple,6.1" Super Retina XDR OLED 2556×1179,48 Мп + 12 Мп (ультраширокий),3877 мАч,6 ГБ,128 ГБ,Apple A16 Bionic,79990
+iPhone 15 Pro,Apple,6.1" Super Retina XDR ProMotion OLED 2556×1179,48 Мп + 12 Мп + 12 Мп (телефото 3×),3274 мАч,8 ГБ,128 ГБ,Apple A17 Pro,119990
+Samsung Galaxy S24,Samsung,6.2" Dynamic AMOLED 2340×1080 120 Гц,50 Мп + 12 Мп + 10 Мп (телефото 3×),4000 мАч,8 ГБ,128 ГБ,Exynos 2400,89990
+Samsung Galaxy A55,Samsung,6.6" Super AMOLED 2340×1080 120 Гц,50 Мп + 12 Мп + 5 Мп (макро),5000 мАч,8 ГБ,128 ГБ,Exynos 1480,39990
+Google Pixel 8,Google,6.2" OLED 2400×1080 120 Гц,50 Мп + 10.5 Мп (ультраширокий),4575 мАч,8 ГБ,128 ГБ,Google Tensor G3,64990
+Xiaomi Redmi Note 13,Xiaomi,6.67" AMOLED 2400×1080 120 Гц,108 Мп + 8 Мп + 2 Мп,5000 мАч,8 ГБ,256 ГБ,Snapdragon 685,24990
+Xiaomi 14,Xiaomi,6.36" LTPO OLED 2670×1200 120 Гц,50 Мп + 50 Мп + 50 Мп (Leica),4610 мАч,12 ГБ,256 ГБ,Snapdragon 8 Gen 3,84990
+OnePlus 12,OnePlus,6.82" LTPO AMOLED 3168×1440 120 Гц,50 Мп + 48 Мп + 64 Мп (Hasselblad),5400 мАч,12 ГБ,256 ГБ,Snapdragon 8 Gen 3,74990
+realme 12 Pro+,realme,6.7" AMOLED 2412×1080 120 Гц,50 Мп + 64 Мп (телефото 3×) + 8 Мп,5000 мАч,12 ГБ,256 ГБ,Snapdragon 7s Gen 2,34990
+Honor 200 Pro,Honor,6.78" OLED 2800×1260 120 Гц,50 Мп + 50 Мп + 12 Мп (Portrait by Harcourt),5200 мАч,12 ГБ,512 ГБ,Snapdragon 8s Gen 3,64990

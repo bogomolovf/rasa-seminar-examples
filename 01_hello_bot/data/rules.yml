@@ -1,0 +1,28 @@
+version: "3.1"
+
+rules:
+
+- rule: Ответ на приветствие
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Ответ на прощание
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- rule: Ответ на подтверждение
+  steps:
+  - intent: affirm
+  - action: utter_affirm
+
+- rule: Ответ на отрицание
+  steps:
+  - intent: deny
+  - action: utter_deny
+
+- rule: Ответ на вопрос вне области знаний
+  steps:
+  - intent: out_of_scope
+  - action: utter_out_of_scope

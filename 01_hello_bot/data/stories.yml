@@ -1,0 +1,10 @@
+version: "3.1"
+
+stories:
+
+- story: Приветствие и прощание
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: goodbye
+  - action: utter_goodbye

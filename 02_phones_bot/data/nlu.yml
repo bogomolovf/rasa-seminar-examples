@@ -1,0 +1,178 @@
+version: "3.1"
+
+nlu:
+
+# ── Стандартные интенты ────────────────────────────────────────────────────────
+
+- intent: greet
+  examples: |
+    - Привет
+    - Здравствуйте
+    - Добрый день
+    - Доброе утро
+    - Привет, бот
+    - Хай
+    - Салют
+    - Здорово
+
+- intent: goodbye
+  examples: |
+    - Пока
+    - До свидания
+    - Всего доброго
+    - Спасибо, пока
+    - До встречи
+    - Бывай
+    - Выход
+    - Закончим
+
+- intent: out_of_scope
+  examples: |
+    - Расскажи анекдот
+    - Какая погода?
+    - Ты умеешь петь?
+    - Кто тебя создал?
+    - Что такое 5G?
+    - Помоги с домашним заданием
+
+# ── Запрос всех характеристик телефона ────────────────────────────────────────
+
+- intent: ask_phone_specs
+  examples: |
+    - Расскажи про [iPhone 15](phone_model)
+    - Что за телефон [Galaxy S24](phone_model)?
+    - Покажи характеристики [Pixel 8](phone_model)
+    - Какие характеристики у [Xiaomi 14](phone_model)?
+    - Что ты знаешь о [OnePlus 12](phone_model)?
+    - Информация о [Honor 200 Pro](phone_model)
+    - Расскажи о [Redmi Note 13](phone_model)
+    - Хочу узнать про [realme 12 Pro+](phone_model)
+    - Покажи данные [Samsung Galaxy A55](phone_model)
+    - Всё про [iPhone 15 Pro](phone_model)
+    - Расскажи про телефон
+    - Покажи характеристики смартфона
+    - Хочу узнать характеристики
+    - Что ты знаешь о смартфоне?
+    - Информация о телефоне
+
+# ── Запрос конкретной характеристики ──────────────────────────────────────────
+
+- intent: ask_specific_spec
+  examples: |
+    - Какая [камера](spec_type) у [iPhone 15](phone_model)?
+    - Расскажи про [батарею](spec_type) [Galaxy S24](phone_model)
+    - Какой [экран](spec_type) у [Pixel 8](phone_model)?
+    - Сколько [памяти](spec_type) в [Xiaomi 14](phone_model)?
+    - Какой [процессор](spec_type) стоит в [OnePlus 12](phone_model)?
+    - Какая [оперативная память](spec_type) у [Redmi Note 13](phone_model)?
+    - [Цена](spec_type) [Honor 200 Pro](phone_model)
+    - Сколько стоит [Samsung Galaxy A55](phone_model)?
+    - Какой [аккумулятор](spec_type) в [realme 12 Pro+](phone_model)?
+    - Какой [дисплей](spec_type) у [iPhone 15 Pro](phone_model)?
+    - Какая [камера](spec_type)?
+    - Какой [экран](spec_type)?
+    - Расскажи про [батарею](spec_type)
+    - Сколько [памяти](spec_type)?
+    - Какой [процессор](spec_type)?
+    - Какая [оперативная память](spec_type)?
+    - Какая [цена](spec_type)?
+    - Какой [аккумулятор](spec_type)?
+
+# ── Ответ на запрос модели (когда форма переспрашивает) ───────────────────────
+
+- intent: inform
+  examples: |
+    - [iPhone 15](phone_model)
+    - [iPhone 15 Pro](phone_model)
+    - [Samsung Galaxy S24](phone_model)
+    - [Galaxy S24](phone_model)
+    - [Samsung Galaxy A55](phone_model)
+    - [Google Pixel 8](phone_model)
+    - [Pixel 8](phone_model)
+    - [Xiaomi Redmi Note 13](phone_model)
+    - [Redmi Note 13](phone_model)
+    - [Xiaomi 14](phone_model)
+    - [OnePlus 12](phone_model)
+    - [realme 12 Pro+](phone_model)
+    - [Honor 200 Pro](phone_model)
+    - Меня интересует [iPhone 15](phone_model)
+    - Хочу узнать про [Galaxy S24](phone_model)
+    - [Pixel 8](phone_model), пожалуйста
+
+# ── Lookup table: фиксированный список моделей для entity extraction ───────────
+
+- lookup: phone_model
+  examples: |
+    - iPhone 15
+    - iPhone 15 Pro
+    - Samsung Galaxy S24
+    - Galaxy S24
+    - Samsung Galaxy A55
+    - Galaxy A55
+    - Google Pixel 8
+    - Pixel 8
+    - Xiaomi Redmi Note 13
+    - Redmi Note 13
+    - Xiaomi 14
+    - OnePlus 12
+    - realme 12 Pro+
+    - Honor 200 Pro
+
+# ── Синонимы для spec_type: нормализация к именам колонок CSV ─────────────────
+
+- synonym: camera
+  examples: |
+    - камера
+    - камеру
+    - камерой
+    - фотокамера
+    - фото
+    - фотографии
+    - снимки
+
+- synonym: battery
+  examples: |
+    - батарея
+    - батарею
+    - батареей
+    - аккумулятор
+    - аккумулятора
+    - заряд
+    - время работы
+
+- synonym: screen
+  examples: |
+    - экран
+    - экрана
+    - экраном
+    - дисплей
+    - дисплея
+
+- synonym: storage
+  examples: |
+    - память
+    - памяти
+    - хранилище
+    - внутренняя память
+
+- synonym: ram
+  examples: |
+    - оперативная память
+    - ОЗУ
+    - RAM
+    - оперативки
+
+- synonym: processor
+  examples: |
+    - процессор
+    - процессора
+    - чипсет
+    - CPU
+    - чип
+
+- synonym: price
+  examples: |
+    - цена
+    - цену
+    - стоимость
+    - стоимости
