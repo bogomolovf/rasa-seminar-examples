@@ -22,6 +22,52 @@ stories:
   - intent: goodbye
   - action: utter_goodbye
 
+# ── Промпт 8: sad-path stories ────────────────────────────────────────────────
+# RASA внутри активной формы по умолчанию игнорирует пользовательские intents:
+# form loop переспрашивает текущий required_slot. Чтобы out_of_scope-сообщение
+# не молчало, а возвращалось к форме с явным «сначала закончим интервью», мы:
+#   1) НЕ добавляем `ignored_intents: [out_of_scope]` в форму (тогда было бы
+#      молча);
+#   2) Описываем сторис «во время формы пришёл out_of_scope → диспатчим
+#      utter_please_continue_form → возвращаемся в interview_form».
+# Две вариации (на разных шагах формы — email и salary) нужны, чтобы TED
+# обобщил поведение независимо от `requested_slot`.
+
+- story: out_of_scope во время формы (этап email) — продолжаем
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - slot_was_set:
+    - requested_slot: candidate_email
+  - intent: out_of_scope
+  - action: utter_please_continue_form
+  - action: interview_form
+  - active_loop: interview_form
+
+- story: out_of_scope во время формы (этап salary) — продолжаем
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - slot_was_set:
+    - requested_slot: expected_salary
+  - intent: out_of_scope
+  - action: utter_please_continue_form
+  - action: interview_form
+  - active_loop: interview_form
+
+# Greet → представляемся + предлагаем старт → пользователь отказывается → goodbye.
+# Используется TED'ом, чтобы понять: после affirm — продолжаем (см. story
+# «Согласие на старт интервью» выше), после deny — прощаемся.
+
+- story: Greet → отказ от интервью на старте
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: deny
+  - action: utter_goodbye
+
 # ── Промпт 7: 4 истории под три ветки assessment'а ────────────────────────────
 # Каждая включает `slot_was_set: assessment_decision: <code>` после
 # action_assess_candidate — TED должен видеть, как меняется решение, чтобы

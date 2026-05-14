@@ -42,6 +42,15 @@ slots:
       - type: from_entity
         entity: full_name
       - type: from_text
+        # Промпт 8: not_intent — критично, чтобы reset/out_of_scope-сообщения
+        # не попадали в слот через from_text. Без этого фильтра форма
+        # съедает текст «давай заново» как имя/email/опыт и rule «Перезапуск
+        # интервью внутри активной формы» никогда не сработает.
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
         conditions:
           - active_loop: interview_form
             requested_slot: candidate_name
@@ -57,6 +66,11 @@ slots:
       - type: from_entity
         entity: email
       - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
         conditions:
           - active_loop: interview_form
             requested_slot: candidate_email
@@ -88,6 +102,11 @@ slots:
       - type: from_entity
         entity: years_experience
       - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
         conditions:
           - active_loop: interview_form
             requested_slot: years_experience
@@ -119,6 +138,11 @@ slots:
       - type: from_entity
         entity: salary_amount
       - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
         conditions:
           - active_loop: interview_form
             requested_slot: expected_salary
@@ -163,7 +187,7 @@ responses:
     - text: "Я провожу только HR-скрининг на ML-роли. Напишите «начать», чтобы перейти к интервью, или «пока» — чтобы закончить."
 
   utter_iamabot:
-    - text: "Я бот-ассистент HR-команды. Провожу первичный скрининг на роли PM, DA, DE, DS и MLOps."
+    - text: "Да, я HR-бот для первичного скрининга. Решения о найме принимают живые рекрутёры."
 
   utter_introduce_bot:
     - text: "Я HR-ассистент команды ML. Задам несколько вопросов о роли, опыте, навыках и зарплатных ожиданиях — и подскажу, подходите ли вы."
@@ -247,6 +271,17 @@ responses:
 
   utter_goodbye_after_decline:
     - text: "Хорошо, спасибо за уделённое время. Удачи!"
+
+  # Промпт 8: подтверждение сброса интервью. Диспатчится из
+  # ActionResetInterview перед возвратом AllSlotsReset()/ActiveLoop(None).
+  utter_restart_acknowledged:
+    - text: "Начинаем сначала. На какую роль рассмотреть?"
+
+  # Промпт 8: ответ на out_of_scope-сообщение, пойманное внутри активной формы.
+  # Идея — не молча игнорировать (через `ignored_intents`), а явно сказать
+  # «сначала закончим, потом обсудим всё остальное» и переспросить текущий слот.
+  utter_please_continue_form:
+    - text: "Сначала закончим интервью, потом обсудим остальное."
 
 # ── Forms — slot filling ───────────────────────────────────────────────────────
 # Скелет: required_slots пуст. Реальный порядок (desired_role → … → expected_salary)

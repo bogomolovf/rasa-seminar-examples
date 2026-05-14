@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Text
 
 from rasa_sdk import Action, Tracker
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import ActiveLoop, AllSlotsReset, SlotSet
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.forms import FormValidationAction
 
@@ -310,8 +310,16 @@ def _run_assessment(
 class ActionResetInterview(Action):
     """Сбрасывает состояние интервью.
 
-    На Промпте 2 — пустая заглушка. В Промпте 7 будет возвращать SlotSet(None)
-    для всех слотов, ActiveLoop(None) и FollowupAction("utter_restart_done").
+    Промпт 8: реализация — диспатчит подтверждение
+    `utter_restart_acknowledged` и возвращает события `AllSlotsReset()` +
+    `ActiveLoop(None)`. `AllSlotsReset` обнуляет все слоты (вместо
+    explicit `SlotSet(<name>, None)` для каждого — стандартная идиома RASA,
+    не зависит от текущего списка слотов в domain). `ActiveLoop(None)`
+    деактивирует `interview_form`, если он был активен.
+
+    Срабатывает по двум rule'ам (см. `data/rules.yml`):
+      • вне формы (`Перезапуск интервью вне формы`);
+      • внутри активной формы (`Перезапуск интервью внутри активной формы`).
     """
 
     def name(self) -> Text:
@@ -323,8 +331,13 @@ class ActionResetInterview(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        logger.debug("action_reset_interview: skeleton run (no-op)")
-        return []
+        logger.info(
+            "action_reset_interview: resetting all slots and deactivating form "
+            "(active_loop=%r)",
+            tracker.active_loop_name,
+        )
+        dispatcher.utter_message(response="utter_restart_acknowledged")
+        return [AllSlotsReset(), ActiveLoop(None)]
 
 
 class ActionAssessCandidate(Action):

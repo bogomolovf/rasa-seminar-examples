@@ -370,7 +370,7 @@ happy-path и редкие отклонения (например, повтор 
    → `feat(hr-bot): implement candidate assessment engine with role fallback` — ✅ реализован
 7. **Sad-paths** — intents `restart`/`out_of_scope`/`deny`/`bot_challenge`,
    `action_reset_interview`, rules + stories для отказов и сбросов.
-   → `feat(hr-bot): handle restart, deny and out_of_scope flows`
+   → `feat(hr-bot): handle restart, out_of_scope inside form, and bot challenge` — ✅ реализован
 8. **Тесты** — `tests/test_stories.yml` с happy-path и тремя sad-path,
    `Makefile` с `train/test/smoke`, smoke-curl скрипт.
    → `test(hr-bot): add story tests and smoke targets`

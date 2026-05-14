@@ -15,6 +15,11 @@ rules:
   - action: utter_goodbye
 
 - rule: Вне области знаний
+  # Промпт 8: rule срабатывает только если нет активной формы. Внутри
+  # interview_form поведение для out_of_scope покрыто отдельной story
+  # (utter_please_continue_form + повторный вход в форму).
+  condition:
+  - active_loop: null
   steps:
   - intent: out_of_scope
   - action: utter_out_of_scope
@@ -70,8 +75,27 @@ rules:
   - action: utter_goodbye_after_decline
 
 # ── Сброс интервью ─────────────────────────────────────────────────────────────
+# Промпт 8: рестарт работает «откуда угодно». RASA по умолчанию внутри
+# активной формы игнорирует user intents (form loop запрашивает слот заново),
+# поэтому нужно две отдельные rules:
+#   • внутри активной interview_form: явно ловим restart_interview, вызываем
+#     action_reset_interview и сбрасываем active_loop в null (action и сам
+#     возвращает ActiveLoop(None), но указание `active_loop: null` шагом
+#     ниже фиксирует переход для RulePolicy).
+#   • вне формы: просто intent → action.
+# Разделение на две rules нужно, чтобы избежать contradicting predictions —
+# одна rule без condition не покрывает кейс с active_loop корректно.
 
-- rule: Перезапуск интервью
+- rule: Перезапуск интервью внутри активной формы
+  condition:
+  - active_loop: interview_form
   steps:
   - intent: restart_interview
   - action: action_reset_interview
+  - active_loop: null
+
+- rule: Перезапуск интервью вне формы
+  steps:
+  - intent: restart_interview
+  - action: action_reset_interview
+  - active_loop: null
