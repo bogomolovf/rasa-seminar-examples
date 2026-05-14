@@ -373,7 +373,7 @@ happy-path и редкие отклонения (например, повтор 
    → `feat(hr-bot): handle restart, out_of_scope inside form, and bot challenge` — ✅ реализован
 8. **Тесты** — `tests/test_stories.yml` с happy-path и тремя sad-path,
    `Makefile` с `train/test/smoke`, smoke-curl скрипт.
-   → `test(hr-bot): add story tests and smoke targets`
+   → `test(hr-bot): add regression tests for stories and action unit tests` — ✅ реализован
 9. **README** — описание сценариев, схема CSV, инструкция запуска (с поправкой
    на `./.venv/bin/rasa`), таблица интентов/слотов, ссылка на `DESIGN.md`.
    → `docs(hr-bot): add README with run instructions and design overview`

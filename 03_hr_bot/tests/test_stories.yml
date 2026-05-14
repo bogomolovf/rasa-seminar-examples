@@ -1,0 +1,299 @@
+version: "3.1"
+
+# ── HR-bot regression test stories ─────────────────────────────────────────────
+# Промпт 9: эти сторис прогоняются через `rasa test --stories tests/test_stories.yml`.
+# Формат совпадает с `data/stories.yml`. Каждый сценарий — полный
+# диалог: intent + entities → action(s) + slot_was_set. Цель — закрепить
+# поведение бота, чтобы будущие правки не сломали happy/sad-пути.
+#
+# Покрытие (6 сценариев = 3 happy + 3 sad):
+#   1. pass-DS         — полный happy-path, DS с ML-стеком → assessment_decision=pass
+#   2. fail-DS         — DS без опыта → assessment_decision=fail
+#   3. alt-accept-DS   — DS без ML-стека → alternative → affirm → DA → pass
+#   4. alt-deny-DS     — тот же DS-кейс, но deny → utter_goodbye_after_decline
+#   5. restart-mid-form — рестарт в середине формы → action_reset_interview
+#   6. oos-in-form     — out_of_scope внутри формы → utter_please_continue_form
+
+stories:
+
+# ── 1. PASS: Data Scientist с полным стеком ────────────────────────────────────
+- story: TEST PASS — DS с полным стеком и опытом
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Иван Петров
+  - slot_was_set:
+    - candidate_name: Иван Петров
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: ivan@example.com
+  - slot_was_set:
+    - candidate_email: ivan@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: scikit-learn
+      - entity: skill
+        value: PyTorch
+  - slot_was_set:
+    - skills: ["python", "scikit-learn", "pytorch"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "200000"
+  - slot_was_set:
+    - expected_salary: 200000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: pass
+
+# ── 2. FAIL: Data Scientist без опыта ─────────────────────────────────────────
+- story: TEST FAIL — DS без опыта
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Мария Иванова
+  - slot_was_set:
+    - candidate_name: Мария Иванова
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: maria@example.com
+  - slot_was_set:
+    - candidate_email: maria@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "0"
+  - slot_was_set:
+    - years_experience: 0.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+  - slot_was_set:
+    - skills: ["python"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "180000"
+  - slot_was_set:
+    - expected_salary: 180000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: fail
+
+# ── 3. ALT-ACCEPT: DS без ML-стека → DA после affirm ──────────────────────────
+- story: TEST ALT-ACCEPT — DS без ML-стека переходит в DA
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Сергей Морозов
+  - slot_was_set:
+    - candidate_name: Сергей Морозов
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: sergey@example.com
+  - slot_was_set:
+    - candidate_email: sergey@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: SQL
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: Tableau
+  - slot_was_set:
+    - skills: ["sql", "python", "tableau"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "150000"
+  - slot_was_set:
+    - expected_salary: 150000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: alternative
+  - intent: affirm
+  - action: action_offer_alternative_role
+  - slot_was_set:
+    - desired_role: da
+  - slot_was_set:
+    - assessment_decision: pass
+
+# ── 4. ALT-DENY: DS без ML-стека → отказывается от DA ─────────────────────────
+- story: TEST ALT-DENY — DS отказывается от альтернативы
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Ольга Васильева
+  - slot_was_set:
+    - candidate_name: Ольга Васильева
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: olga@example.com
+  - slot_was_set:
+    - candidate_email: olga@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: SQL
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: Tableau
+  - slot_was_set:
+    - skills: ["sql", "python", "tableau"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "150000"
+  - slot_was_set:
+    - expected_salary: 150000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: alternative
+  - intent: deny
+  - action: utter_goodbye_after_decline
+
+# ── 5. RESTART-MID-FORM: сброс посередине заполнения формы ────────────────────
+- story: TEST RESTART — сброс посередине формы (на этапе role)
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Алексей Иванов
+  - slot_was_set:
+    - candidate_name: Алексей Иванов
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: alex@example.com
+  - slot_was_set:
+    - candidate_email: alex@example.com
+  - action: interview_form
+  - intent: restart_interview
+  - action: action_reset_interview
+  - active_loop: null
+
+# ── 6. OOS-IN-FORM: out_of_scope внутри формы → продолжаем ────────────────────
+- story: TEST OOS-IN-FORM — out_of_scope в форме → продолжаем интервью
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Дмитрий Соколов
+  - slot_was_set:
+    - candidate_name: Дмитрий Соколов
+  - action: interview_form
+  - intent: out_of_scope
+  - action: utter_please_continue_form
+  - action: interview_form
+  - active_loop: interview_form

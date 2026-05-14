@@ -101,6 +101,42 @@ TODO (заполнится в Промпте 10). Полный набор happy-
                        #   ActionOfferAlternativeRole, ValidateInterviewForm
 ```
 
+## Тесты
+
+В директории `tests/` лежат две группы тестов, обе запускаются одной командой
+`make test` из `03_hr_bot/`:
+
+1. **`tests/test_stories.yml`** — regression-stories, прогоняются через
+   `rasa test --stories tests/test_stories.yml --out results/`. Покрывают
+   6 сценариев (3 happy + 3 sad):
+   - **PASS** — Data Scientist с полным стеком и опытом → `assessment_decision=pass`.
+   - **FAIL** — Data Scientist без опыта → `assessment_decision=fail`.
+   - **ALT-ACCEPT** — DS без ML-стека → альтернатива (DA) → `affirm` → `pass`.
+   - **ALT-DENY** — тот же DS-кейс, но `deny` → `utter_goodbye_after_decline`.
+   - **RESTART** — сброс посередине формы (`restart_interview` → `action_reset_interview`).
+   - **OOS-IN-FORM** — `out_of_scope` внутри формы → `utter_please_continue_form` → форма продолжается.
+2. **`tests/test_actions.py`** — pytest-юниты на helper'ы `actions.actions`:
+   `_parse_salary` (8 валидных + 5 невалидных кейсов), `_normalize_skills`,
+   `EMAIL_RE` (4 + 6 кейсов), `_split_skills`, `_load_roles`, и три сценария
+   `_run_assessment` (pass / fail / alternative + неизвестная роль). Всего
+   32 теста.
+
+### Куда складываются результаты
+
+- `rasa test` → JSON-отчёты и confusion matrices в `results/` (директория
+  игнорируется в `.gitignore`). Если какая-то история провалилась — её
+  пошаговая диагностика лежит в `results/failed_test_stories.yml`.
+- `pytest` → итоговая таблица «прошёл/упал» прямо в терминале.
+
+### Быстрый запуск из корня репозитория
+
+```bash
+cd 03_hr_bot && make test
+```
+
+Перед первым запуском не забудь обучить модель: `make train` (или `make all`,
+который выполнит `validate → train → test` подряд).
+
 ## Идеи для самостоятельного задания (post-MVP)
 
 См. DESIGN.md §10 — дорожная карта итераций. После завершения базового
