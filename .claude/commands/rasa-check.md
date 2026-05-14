@@ -6,11 +6,11 @@ allowed-tools: Bash
 
 You are validating a RASA bot. Steps:
 
-0. **Activate venv first** in the same Bash call as any rasa command:
-   ```bash
-   source /Users/fedorbogomolov/Desktop/examples/.venv/bin/activate
+0. **Use the absolute rasa path** — `.venv` is a conda prefix env (no `bin/activate` script):
    ```
-   (Each Bash invocation is a fresh shell — activation does not persist across calls. Prepend it inline, or use the absolute path `/Users/fedorbogomolov/Desktop/examples/.venv/bin/rasa`.)
+   /Users/fedorbogomolov/Desktop/examples/.venv/bin/rasa <subcommand>
+   ```
+   (Or `conda activate /Users/fedorbogomolov/Desktop/examples/.venv` for an interactive shell — but Bash tool calls each spawn a fresh shell, so activation won't persist; prefer the direct path.)
 
 1. Determine the target bot directory:
    - If `$ARGUMENTS` is non-empty, use it (e.g. `03_hr_bot`).

@@ -11,7 +11,7 @@
 ## Стек и язык
 - **Python 3.10**, **RASA 3.6.x** (см. `SETUP_PYTHON.md` / `SETUP_ANACONDA.md`).
 - Окружение: conda-managed venv в `./.venv` (создано через `conda create -p ./.venv python=3.10`).
-- **Перед любой rasa-командой** — активируй: `source ./.venv/bin/activate`. Либо используй прямой путь: `./.venv/bin/rasa ...`.
+- **Используй прямой путь к binary:** `./.venv/bin/rasa ...` или `./.venv/bin/python -m rasa ...`. Conda prefix-env не имеет `bin/activate` скрипта; для интерактивной shell — `conda activate /Users/fedorbogomolov/Desktop/examples/.venv`.
 - Бот разговаривает **на русском**. NLU-примеры, ответы (`utter_*`), кнопки — на русском.
 - Код, переменные, имена интентов/сущностей/слотов — на английском (`inform_role`, `email`, `years_experience` и т.п.).
 - Конвенции структуры (config.yml pipeline/policies, размещение actions, формат данных) — как в `02_phones_bot`.

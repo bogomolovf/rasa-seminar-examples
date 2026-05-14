@@ -6,11 +6,11 @@ allowed-tools: Bash
 
 You are running an end-to-end smoke test for a RASA bot. Steps:
 
-0. **Activate venv** (or use absolute paths) in every Bash invocation that runs rasa:
-   ```bash
-   source /Users/fedorbogomolov/Desktop/examples/.venv/bin/activate
+0. **Use the absolute rasa path** — `.venv` is a conda prefix env (no `bin/activate` script):
    ```
-   Each Bash call is a fresh shell — activation does not persist.
+   /Users/fedorbogomolov/Desktop/examples/.venv/bin/rasa <subcommand>
+   ```
+   Each Bash call is a fresh shell — `conda activate` would not persist; the direct path is the simplest workaround.
 
 1. Determine target bot directory:
    - Use `$ARGUMENTS` if non-empty, else `03_hr_bot`.
