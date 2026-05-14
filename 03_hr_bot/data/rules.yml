@@ -32,11 +32,13 @@ rules:
   - action: interview_form
   - active_loop: interview_form
 
-# ── Завершение формы — подтверждение выбранной роли ───────────────────────────
-# Промпт 3: после заполнения всех required_slots формы (пока — только desired_role)
-# показываем utter_role_chosen. `action_assess_candidate` подключим в Промпте 7.
+# ── Завершение формы — assessment кандидата ───────────────────────────────────
+# Промпт 7: после заполнения всех 6 required_slots формы сразу вызываем
+# action_assess_candidate (он считает решение и диспатчит ответ под
+# pass/fail/alternative). Старый rule с utter_role_chosen больше не нужен —
+# подтверждение роли неявно покрывается ответом assessment'а.
 
-- rule: Завершение interview_form — подтверждение роли
+- rule: Завершение interview_form — ассессмент кандидата
   condition:
   - active_loop: interview_form
   steps:
@@ -44,7 +46,28 @@ rules:
   - active_loop: null
   - slot_was_set:
     - requested_slot: null
-  - action: utter_role_chosen
+  - action: action_assess_candidate
+
+# ── Ветка alternative ─────────────────────────────────────────────────────────
+# После того как action_assess_candidate выставил decision=alternative и
+# спросил «Хочешь обсудить роль X?», бот ждёт affirm/deny. Обе ветки —
+# rule-based, чтобы поведение было детерминированным и не зависело от TED.
+
+- rule: Согласие на альтернативу
+  condition:
+  - slot_was_set:
+    - assessment_decision: alternative
+  steps:
+  - intent: affirm
+  - action: action_offer_alternative_role
+
+- rule: Отказ от альтернативы
+  condition:
+  - slot_was_set:
+    - assessment_decision: alternative
+  steps:
+  - intent: deny
+  - action: utter_goodbye_after_decline
 
 # ── Сброс интервью ─────────────────────────────────────────────────────────────
 

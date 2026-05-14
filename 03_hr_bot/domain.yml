@@ -123,11 +123,33 @@ slots:
           - active_loop: interview_form
             requested_slot: expected_salary
 
-  assessment_decision:
+  # Промпт 7: вспомогательный слот для подстановки в шаблоны
+  # utter_assessment_alternative_intro / utter_ask_accept_alternative.
+  # Заполняется action_assess_candidate (когда decision == alternative)
+  # человекочитаемым названием альтернативной роли (например, «Data Analyst»).
+  # Не featurized, чтобы не мешать политике обучения.
+  alternative_role_name:
     type: text
     influence_conversation: false
     mappings:
-      - type: from_text
+      - type: custom
+
+  # Промпт 7: assessment_decision — категориальный слот, который выставляет
+  # action_assess_candidate по итогам сравнения слотов формы с
+  # roles_requirements.csv. Маппинг `custom` означает: RASA не пытается
+  # вытащить значение из сообщения автоматически, слот изменяется только
+  # явным SlotSet из action. influence_conversation: true — необходимо, чтобы
+  # RulePolicy различала состояния «после assessment'а с decision=alternative»
+  # и «до assessment'а» (иначе intent affirm даёт contradicting rules).
+  assessment_decision:
+    type: categorical
+    values:
+      - pass
+      - fail
+      - alternative
+    influence_conversation: true
+    mappings:
+      - type: custom
 
 # ── Responses — ответы бота ────────────────────────────────────────────────────
 responses:
@@ -200,6 +222,31 @@ responses:
   # Промпт 3: подтверждение выбора роли. {desired_role} — каноническое значение слота.
   utter_role_chosen:
     - text: "Записал, рассматриваем тебя как {desired_role}."
+
+  # Промпт 7: ответы под три ветки решения assessment.
+  # Динамические части (имя кандидата, роль, причина fail, название альтернативы)
+  # рендерятся либо плейсхолдерами Rasa, либо отдельным dispatcher.utter_message
+  # с готовым текстом из action — см. ActionAssessCandidate / ActionOfferAlternativeRole.
+
+  utter_assessment_pass:
+    - text: "{candidate_name}, отлично — ты подходишь на роль {desired_role}. Свяжемся для следующего этапа."
+
+  utter_assessment_fail_intro:
+    - text: "К сожалению, по итогам сегодня не подходим."
+
+  utter_assessment_alternative_intro:
+    - text: "По исходной роли {desired_role} не проходишь, но есть подходящая альтернатива: {alternative_role_name}."
+
+  utter_ask_accept_alternative:
+    - text: "Хочешь обсудить роль {alternative_role_name}? Да/Нет"
+      buttons:
+        - title: "Да"
+          payload: "/affirm"
+        - title: "Нет"
+          payload: "/deny"
+
+  utter_goodbye_after_decline:
+    - text: "Хорошо, спасибо за уделённое время. Удачи!"
 
 # ── Forms — slot filling ───────────────────────────────────────────────────────
 # Скелет: required_slots пуст. Реальный порядок (desired_role → … → expected_salary)

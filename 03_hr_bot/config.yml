@@ -32,8 +32,16 @@ policies:
 - name: MemoizationPolicy
   max_history: 5
 - name: RulePolicy
-  core_fallback_threshold: 0.4
-  core_fallback_action_name: utter_out_of_scope
+  # Промпт 7: НЕ задаём core_fallback_action_name — стандартный
+  # action_default_fallback откатывает последний user-message (включая
+  # все слоты, которые SlotSet выставил в action'е), что ломало
+  # alternative→affirm флоу (после action_offer_alternative_role
+  # tracker «забывал» новые значения desired_role/assessment_decision).
+  # Если RulePolicy не уверена и TED тоже — RulePolicy вернёт нулевую
+  # уверенность, и Rasa упадёт в action_listen (Default behavior).
+  # Out-of-scope intent остаётся через rule «Вне области знаний».
+  core_fallback_threshold: 0.0
+  enable_fallback_prediction: false
 - name: TEDPolicy
   max_history: 5
   epochs: 100

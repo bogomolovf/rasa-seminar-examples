@@ -1,0 +1,6 @@
+role,role_name,min_years,required_skills,nice_to_have_skills,salary_min,salary_max,alternative_role
+pm,Project Manager,2,,scrum;agile;jira;тимлид,120000,250000,
+da,Data Analyst,1,sql;python,tableau;power bi;a/b-testing;статистика,100000,180000,pm
+de,Data Engineer,2,spark;airflow;kafka,python;sql;clickhouse;snowflake;dbt;hadoop,150000,280000,da
+ds,Data Scientist,2,python;scikit-learn;pytorch,pandas;numpy;tensorflow;xgboost;nlp;cv,150000,300000,da
+mlops,MLOps Engineer,3,docker;kubernetes;mlflow,python;aws;gcp;airflow;dvc,180000,320000,de

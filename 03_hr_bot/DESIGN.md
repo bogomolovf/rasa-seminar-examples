@@ -367,7 +367,7 @@ happy-path и редкие отклонения (например, повтор 
 6. **Assessment engine + альтернативная роль** — `roles_requirements.csv`,
    `action_assess_candidate`, `action_offer_alternative_role`, slot
    `assessment_decision`, rules для трёх веток (pass/fail/alternative).
-   → `feat(hr-bot): add assessment engine and alternative role flow`
+   → `feat(hr-bot): implement candidate assessment engine with role fallback` — ✅ реализован
 7. **Sad-paths** — intents `restart`/`out_of_scope`/`deny`/`bot_challenge`,
    `action_reset_interview`, rules + stories для отказов и сбросов.
    → `feat(hr-bot): handle restart, deny and out_of_scope flows`
