@@ -26,6 +26,7 @@ entities:
   - email
   - years_experience
   - skill
+  - salary_amount
 
 # ── Slots — память диалога ─────────────────────────────────────────────────────
 # ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
@@ -104,11 +105,23 @@ slots:
       - type: from_entity
         entity: skill
 
+  # Промпт 6: ожидаемая зарплата — float, чтобы сравнивать с диапазонами в
+  # roles_requirements.csv. Приоритет — entity `salary_amount` (regex-фича в DIET
+  # ловит «150000», «150 000», «150к», «200 тысяч», «300 000 ₽»), fallback на
+  # from_text — чтобы validate_expected_salary смог отработать на «много» и
+  # переспросить через utter_invalid_salary.
   expected_salary:
-    type: text
+    type: float
     influence_conversation: false
+    min_value: 0
+    max_value: 1500000
     mappings:
+      - type: from_entity
+        entity: salary_amount
       - type: from_text
+        conditions:
+          - active_loop: interview_form
+            requested_slot: expected_salary
 
   assessment_decision:
     type: text
@@ -162,6 +175,13 @@ responses:
   utter_invalid_skills:
     - text: "Не понял ни одного навыка. Назови хотя бы один из стандартных: Python, SQL, Spark…"
 
+  # Промпт 6: вопрос и ошибка для слота expected_salary.
+  utter_ask_expected_salary:
+    - text: "Какую зарплату ты ожидаешь? Можно числом (например, 200000), словом (200к, 200 тысяч) или с валютой (300 000 ₽)."
+
+  utter_invalid_salary:
+    - text: "Не понял сумму. Назови число от 50 000 до 1 500 000 ₽ — например, 150000, 150к или 150 тысяч."
+
   # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
   utter_ask_desired_role:
     - text: "На какую роль вы претендуете?"
@@ -196,6 +216,8 @@ forms:
       # чтобы потом в Промпте 6 (assessment) сразу знать, на что смотреть.
       - years_experience
       - skills
+      # Промпт 6: последний обязательный слот — зарплатные ожидания.
+      - expected_salary
 
 # ── Custom actions — регистрация ───────────────────────────────────────────────
 # Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.

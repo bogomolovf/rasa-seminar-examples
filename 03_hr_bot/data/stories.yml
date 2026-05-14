@@ -2,10 +2,10 @@ version: "3.1"
 
 stories:
 
-# Промпт 5: happy-path формы — кандидат проходит все 5 текущих обязательных слотов
-# (candidate_name → candidate_email → desired_role → years_experience → skills)
-# и форма завершается.
-- story: Приветствие и полный проход формы (имя → email → роль → опыт → навыки)
+# Промпт 6: happy-path формы — кандидат проходит все 6 обязательных слотов
+# (candidate_name → candidate_email → desired_role → years_experience → skills →
+# expected_salary) и форма завершается.
+- story: Приветствие и полный проход формы (имя → email → роль → опыт → навыки → зарплата)
   steps:
   - intent: greet
   - action: utter_greet
@@ -48,6 +48,13 @@ stories:
         value: SQL
   - slot_was_set:
     - skills: ["python", "sql"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "200000"
+  - slot_was_set:
+    - expected_salary: 200000.0
   - action: interview_form
   - active_loop: null
   - slot_was_set:
@@ -119,6 +126,13 @@ stories:
   - slot_was_set:
     - skills: ["python", "pytorch", "pandas"]
   - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "250000"
+  - slot_was_set:
+    - expected_salary: 250000.0
+  - action: interview_form
   - active_loop: null
   - slot_was_set:
     - requested_slot: null
@@ -168,6 +182,13 @@ stories:
         value: Kafka
   - slot_was_set:
     - skills: ["spark", "airflow", "kafka"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "280000"
+  - slot_was_set:
+    - expected_salary: 280000.0
   - action: interview_form
   - active_loop: null
   - slot_was_set:

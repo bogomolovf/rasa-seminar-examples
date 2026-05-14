@@ -363,7 +363,7 @@ happy-path и редкие отклонения (например, повтор 
    → `feat(hr-bot): capture years of experience and skill list` — ✅ реализован
 5. **Зарплата с гибким парсером** — entity `salary_amount` (regex для
    `200000`, `200к`, `250 000`, `200-250к`), валидатор-нормализатор → float.
-   → `feat(hr-bot): collect expected_salary with flexible parser`
+   → `feat(hr-bot): parse expected salary with flexible regex` — ✅ реализован
 6. **Assessment engine + альтернативная роль** — `roles_requirements.csv`,
    `action_assess_candidate`, `action_offer_alternative_role`, slot
    `assessment_decision`, rules для трёх веток (pass/fail/alternative).

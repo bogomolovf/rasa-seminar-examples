@@ -30,6 +30,91 @@ EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 # «3,5», «3 года»). Используется в validate_years_experience при from_text-вводе.
 YEARS_NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 
+# Промпт 6: regex для leading-числа в строке зарплаты (после удаления валюты и
+# сжатия пробелов внутри числа). Поддерживает целые и дробные значения.
+SALARY_NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
+
+# Промпт 6: regex-маркеры суффиксов «тысячи». Хвост у слова «тыс/тысяч/тысячи»
+# может быть с любыми гласными окончаниями — матчим всё семейство.
+_SALARY_THOUSANDS_RE = re.compile(r"тыс(?:яч[аи]?)?")
+# Узкий неразрывный пробел (U+202F) и обычный неразрывный пробел (U+00A0) —
+# часто встречаются в скопированных значениях вида «150 000 ₽».
+_SALARY_THIN_SPACES = (" ", " ")
+# Слова валюты, которые мы вырезаем перед парсингом числа. Порядок имеет значение:
+# «рублей»/«руб.» матчатся раньше короткого «руб», иначе останется «лей»/«.».
+_SALARY_CURRENCY_TOKENS = ("рублей", "руб.", "руб", "₽", " р")
+
+
+def _parse_salary(text: str) -> "float | None":
+    """Парсит зарплатный ввод в число рублей.
+
+    Поддерживаемые форматы (после lowercasing и нормализации пробелов/валюты):
+      • «150000», «150 000», «150_000» → 150000.0
+      • «150к», «150 к», «150k» → 150000.0
+      • «150 тысяч», «150 тыс», «200 тысячи» → 150000.0 / 200000.0
+      • «150 000 ₽», «300 000 руб», «200к рублей» → 150000.0 / 300000.0 / 200000.0
+
+    Возвращает float или None, если строка не содержит распознаваемого числа.
+
+    >>> _parse_salary("150000")
+    150000.0
+    >>> _parse_salary("150 000 ₽")
+    150000.0
+    >>> _parse_salary("200к")
+    200000.0
+    >>> _parse_salary("180 тысяч")
+    180000.0
+    >>> _parse_salary("много") is None
+    True
+    >>> _parse_salary("") is None
+    True
+    >>> _parse_salary("abc xyz") is None
+    True
+    >>> _parse_salary("   ") is None
+    True
+    >>> _parse_salary("300 000 руб")
+    300000.0
+    >>> _parse_salary("200к рублей")
+    200000.0
+    """
+    if text is None:
+        return None
+    s = str(text).lower().strip()
+    if not s:
+        return None
+
+    # Нормализуем неразрывные/тонкие пробелы к обычным.
+    for ch in _SALARY_THIN_SPACES:
+        s = s.replace(ch, " ")
+
+    # Срезаем валютные суффиксы. Список упорядочен от длинных к коротким, чтобы
+    # «рублей» матчилось раньше «руб» и не оставляло «лей».
+    for token in _SALARY_CURRENCY_TOKENS:
+        s = s.replace(token, " ")
+
+    # Определяем множитель: «к»/«k»/«тыс*» → 1000, иначе 1.
+    multiplier = 1
+    if _SALARY_THOUSANDS_RE.search(s):
+        multiplier = 1000
+        s = _SALARY_THOUSANDS_RE.sub(" ", s)
+    elif "к" in s or "k" in s:
+        multiplier = 1000
+        s = s.replace("к", " ").replace("k", " ")
+
+    # Сжимаем пробелы и подчёркивания внутри числа: «150 000» → «150000».
+    s = s.replace("_", "")
+    s = re.sub(r"(?<=\d)[\s](?=\d)", "", s)
+
+    match = SALARY_NUMBER_RE.search(s)
+    if match is None:
+        return None
+    try:
+        value = float(match.group(0).replace(",", "."))
+    except ValueError:
+        return None
+
+    return value * multiplier
+
 
 def _normalize_skills(values: List[str]) -> List[str]:
     """Нормализует список навыков: распаковывает, lower, strip, дедуп.
@@ -248,3 +333,30 @@ class ValidateInterviewForm(FormValidationAction):
 
         logger.debug("validate_skills: accepted %r", normalized)
         return {"skills": normalized}
+
+    def validate_expected_salary(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        """Принимает зарплату в диапазоне 50 000–1 500 000 ₽.
+
+        Делегирует парсинг в `_parse_salary` (умеет «150000», «150 000»,
+        «150к», «150 тысяч», «300 000 руб» и т.п.). При неуспехе или выходе
+        за диапазон диспатчит `utter_invalid_salary` и возвращает None —
+        форма переспросит тот же слот.
+        """
+        if slot_value is None or slot_value == "":
+            logger.debug("validate_expected_salary: empty value, asking again")
+            return {"expected_salary": None}
+
+        parsed = _parse_salary(str(slot_value))
+        if parsed is None or parsed < 50000 or parsed > 1500000:
+            logger.debug("validate_expected_salary: invalid %r (parsed=%r)", slot_value, parsed)
+            dispatcher.utter_message(response="utter_invalid_salary")
+            return {"expected_salary": None}
+
+        logger.debug("validate_expected_salary: accepted %r", parsed)
+        return {"expected_salary": parsed}
