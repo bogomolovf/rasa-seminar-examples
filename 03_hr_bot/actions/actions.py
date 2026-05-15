@@ -282,8 +282,15 @@ def _run_assessment(
         else:
             alt_name = str(alt_row["role_name"])
             events.append(SlotSet("alternative_role_name", alt_name))
+            # desired_role передаём явным kwarg'ом: при цепочке alt→alt (DS→DA→PM)
+            # тут лежит уже НОВАЯ роль (kwarg-аргумент функции), а tracker.get_slot
+            # ещё держит исходную «ds» — pending SlotSet применяется после run().
+            # Без явного аргумента шаблон бы рендерил «По исходной роли ds» вместо
+            # «da», обманывая пользователя про роль, на которую он только что
+            # согласился.
             dispatcher.utter_message(
                 response="utter_assessment_alternative_intro",
+                desired_role=desired_role,
                 alternative_role_name=alt_name,
             )
             missing = sorted(required - candidate_skills)
@@ -337,6 +344,42 @@ class ActionResetInterview(Action):
             tracker.active_loop_name,
         )
         dispatcher.utter_message(response="utter_restart_acknowledged")
+        return [AllSlotsReset(), ActiveLoop(None)]
+
+
+class ActionTelegramStart(Action):
+    """Реакция на команду `/start` (Telegram системная кнопка или ручной ввод).
+
+    Промпт 9: Telegram присылает «/start» при первом контакте с ботом и при
+    нажатии системной кнопки «Start» в шапке чата (в т.ч. сразу после очистки
+    истории клиентом). Без специальной обработки бот оставался в прошлом
+    состоянии (например, повторял результат assessment'а), потому что сервер
+    про очистку истории на клиенте ничего не знает — tracker по chat_id живёт
+    своей жизнью.
+
+    Принципиально НЕ используем `Restarted()` через `action_restart`: этот
+    event обнуляет весь tracker и обрывает текущее предсказание политики, из-за
+    чего следующий шаг rule (`utter_greet`) до пользователя не доходит. Вместо
+    этого диспатчим приветствие и возвращаем `AllSlotsReset` + `ActiveLoop(None)`
+    — слоты и активная форма обнуляются, события трекера сохраняются, и
+    политика продолжает предсказывать как обычно.
+    """
+
+    def name(self) -> Text:
+        return "action_telegram_start"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        logger.info(
+            "action_telegram_start: /start received, resetting slots "
+            "(active_loop=%r)",
+            tracker.active_loop_name,
+        )
+        dispatcher.utter_message(response="utter_greet")
         return [AllSlotsReset(), ActiveLoop(None)]
 
 
@@ -474,22 +517,42 @@ class ValidateInterviewForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         """Принимает имя, если в строке хотя бы два непустых токена.
 
+        DIET тренируется на небольшом числе аннотаций `[Имя Фамилия](full_name)`
+        и для редких имён (Фёдор, Пётр) выдёргивает только фамилию — слот через
+        from_entity заполняется одним токеном и валидатор бесконечно
+        переспрашивает. Поэтому, если entity-извлечение дало < 2 токенов,
+        пробуем raw-text последнего сообщения (та же логика, что и при
+        отсутствии full_name-entity — там сработал бы from_text-маппинг).
+
         Возвращает {"candidate_name": None} при отказе — форма переспросит
         тот же слот, и пользователь введёт значение заново.
         """
-        if not slot_value or not isinstance(slot_value, str):
-            logger.debug("validate_candidate_name: empty value, asking again")
-            return {"candidate_name": None}
+        candidates: List[str] = []
+        if isinstance(slot_value, str) and slot_value.strip():
+            candidates.append(slot_value)
+        raw_text = (tracker.latest_message or {}).get("text") or ""
+        if isinstance(raw_text, str) and raw_text.strip():
+            # Только если не дублирует slot_value — иначе повторно прогоним то же.
+            if not candidates or raw_text.strip() != candidates[0].strip():
+                candidates.append(raw_text)
 
-        tokens = [t for t in slot_value.strip().split() if t]
-        if len(tokens) < 2:
-            logger.debug("validate_candidate_name: only one token %r", slot_value)
-            dispatcher.utter_message(response="utter_invalid_name")
-            return {"candidate_name": None}
+        for candidate in candidates:
+            tokens = [t for t in candidate.strip().split() if t]
+            if len(tokens) >= 2:
+                cleaned = " ".join(tokens)
+                logger.debug(
+                    "validate_candidate_name: accepted %r (source=%s)",
+                    cleaned,
+                    "entity" if candidate is slot_value else "raw_text",
+                )
+                return {"candidate_name": cleaned}
 
-        cleaned = " ".join(tokens)
-        logger.debug("validate_candidate_name: accepted %r", cleaned)
-        return {"candidate_name": cleaned}
+        logger.debug(
+            "validate_candidate_name: no ≥2-token candidate (slot=%r, text=%r)",
+            slot_value, raw_text,
+        )
+        dispatcher.utter_message(response="utter_invalid_name")
+        return {"candidate_name": None}
 
     def validate_candidate_email(
         self,

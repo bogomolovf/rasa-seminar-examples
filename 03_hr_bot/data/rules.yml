@@ -99,3 +99,36 @@ rules:
   - intent: restart_interview
   - action: action_reset_interview
   - active_loop: null
+
+# ── Telegram /start — сброс сессии и приветствие ──────────────────────────────
+# Промпт 9: Telegram присылает «/start» при первом контакте и при нажатии
+# системной кнопки «Start» (в т.ч. сразу после очистки истории чата клиентом).
+# RASA парсит ведущий «/» как explicit intent-trigger → intent=start, минуя
+# NLU. Без этого rule бот после «/start» оставался в прошлом состоянии
+# (например, повторно показывал результат assessment'а из предыдущей сессии),
+# потому что сервер не знает про очистку клиентом — tracker по chat_id жив.
+# action_telegram_start обнуляет слоты + active_loop и диспатчит utter_greet.
+# Принципиально НЕ зовём action_restart: его Restarted() обрывает текущую
+# цепочку предсказаний, и следующий шаг rule до пользователя не доходит.
+
+- rule: Telegram /start вне формы — сброс и приветствие
+  condition:
+  - active_loop: null
+  steps:
+  - intent: start
+  - action: action_telegram_start
+
+# Внутри активной interview_form поведение идентичное (сброс слотов и приветствие),
+# но нужна отдельная rule с условием active_loop, иначе одна rule без condition
+# даёт contradicting predictions для двух разных состояний треккера. Кроме того,
+# после action_telegram_start явно сбрасываем active_loop в null — он деактивируется
+# через AllSlotsReset+ActiveLoop(None) в самой action, но указание шагом ниже
+# фиксирует переход для RulePolicy.
+
+- rule: Telegram /start внутри активной формы — сброс и приветствие
+  condition:
+  - active_loop: interview_form
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - active_loop: null

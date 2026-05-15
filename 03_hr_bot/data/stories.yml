@@ -5,12 +5,44 @@ stories:
 # Простые «non-form» истории: приветствие, согласие на интервью, сброс.
 # Они тренируют TED на базовых ветках, не связанных с assessment'ом.
 
-- story: Согласие на старт интервью
+# utter_greet прямо спрашивает «Хотите начать собеседование?», поэтому «да»
+# после приветствия — это согласие на интервью, а не запрос дополнительной
+# информации. Запускаем interview_form сразу. Раньше тут стояло
+# utter_introduce_bot — пользователю приходилось дополнительно писать «начать»,
+# что не интуитивно. Заодно это устраняет нестабильность TED после Промпта 9:
+# action_telegram_start (на /start) тоже диспатчит utter_greet, и без явной
+# story после «action_telegram_start → affirm» политика угадывала utter_goodbye
+# с 0.14 confidence.
+
+- story: Согласие на старт интервью (после greet)
   steps:
   - intent: greet
   - action: utter_greet
   - intent: affirm
-  - action: utter_introduce_bot
+  - action: interview_form
+  - active_loop: interview_form
+
+# То же самое, но для триггера через Telegram-команду /start. action_telegram_start
+# показывает то же приветствие; после affirm запускаем форму. Без этой story
+# TED уходил в utter_goodbye по бизнес-смыслу абсолютно случайно.
+
+- story: Согласие на старт интервью (после /start)
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - intent: affirm
+  - action: interview_form
+  - active_loop: interview_form
+
+# Парная ветка отказа после /start. Без этой story TED иногда отвечал
+# utter_introduce_bot или другим случайным действием.
+
+- story: Отказ от интервью после /start
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - intent: deny
+  - action: utter_goodbye
 
 - story: Сброс интервью посередине
   steps:

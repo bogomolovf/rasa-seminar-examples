@@ -14,6 +14,13 @@ intents:
   - affirm
   - deny
   - inform
+  # Промпт 9: Telegram присылает «/start» при первом контакте и при нажатии
+  # системной кнопки «Start» (в т.ч. после очистки истории). RASA трактует
+  # сообщения с ведущим «/» как explicit intent-trigger — NLU их не видит,
+  # поэтому держать `/start` среди примеров start_interview бесполезно.
+  # Заводим отдельный intent `start` и rule, которая делает action_restart +
+  # utter_greet, чтобы каждый /start гарантированно сбрасывал сессию.
+  - start
 
 # ── Entities — извлекаемые сущности ────────────────────────────────────────────
 # Промпт 3: добавили entity `role` (lookup + synonyms нормализуют значения
@@ -51,6 +58,7 @@ slots:
           - out_of_scope
           - bot_challenge
           - goodbye
+          - start
         conditions:
           - active_loop: interview_form
             requested_slot: candidate_name
@@ -71,6 +79,7 @@ slots:
           - out_of_scope
           - bot_challenge
           - goodbye
+          - start
         conditions:
           - active_loop: interview_form
             requested_slot: candidate_email
@@ -99,14 +108,23 @@ slots:
     min_value: 0
     max_value: 50
     mappings:
+      # Промпт 9-fix: from_entity ОБЯЗАТЕЛЬНО conditioned на requested_slot —
+      # regex `\b\d{1,2}\b` (см. nlu.yml) и DIET-обобщение ловят любое 1–2-значное
+      # число как years_experience. Без условия после ответа «1» на вопрос про опыт
+      # форма попутно срабатывала бы и на следующие digit-ответы, либо ввод вне
+      # очереди заполнял слот заранее и пропускал вопрос.
       - type: from_entity
         entity: years_experience
+        conditions:
+          - active_loop: interview_form
+            requested_slot: years_experience
       - type: from_text
         not_intent:
           - restart_interview
           - out_of_scope
           - bot_challenge
           - goodbye
+          - start
         conditions:
           - active_loop: interview_form
             requested_slot: years_experience
@@ -135,14 +153,23 @@ slots:
     min_value: 0
     max_value: 1500000
     mappings:
+      # Промпт 9-fix: от DIET regex `salary_amount` фонит на любое голое число —
+      # «1», «5» и т.п. ловятся как salary_amount, и без conditions слот зарплаты
+      # заполняется ответом на вопрос про опыт. validate_expected_salary тогда
+      # ругается «Не понял сумму» уже после ответа про годы, и пользователь видит
+      # лишнее сообщение об ошибке + пропуск пункта про зарплату.
       - type: from_entity
         entity: salary_amount
+        conditions:
+          - active_loop: interview_form
+            requested_slot: expected_salary
       - type: from_text
         not_intent:
           - restart_interview
           - out_of_scope
           - bot_challenge
           - goodbye
+          - start
         conditions:
           - active_loop: interview_form
             requested_slot: expected_salary
@@ -229,18 +256,26 @@ responses:
     - text: "Не понял сумму. Назови число от 50 000 до 1 500 000 ₽ — например, 150000, 150к или 150 тысяч."
 
   # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
+  # Короткие тайтлы — потому что Telegram режет длинные при горизонтальной раскладке.
+  # Полные названия — в тексте ответа (легенда).
   utter_ask_desired_role:
-    - text: "На какую роль вы претендуете?"
+    - text: |-
+        На какую роль ты претендуешь? Можно нажать кнопку или написать текстом.
+        • PM — Project Manager
+        • DA — Data Analyst
+        • DE — Data Engineer
+        • DS — Data Scientist
+        • MLOps — MLOps Engineer
       buttons:
-        - title: "Project Manager"
+        - title: "PM"
           payload: '/inform{"role":"pm"}'
-        - title: "Data Analyst"
+        - title: "DA"
           payload: '/inform{"role":"da"}'
-        - title: "Data Engineer"
+        - title: "DE"
           payload: '/inform{"role":"de"}'
-        - title: "Data Scientist"
+        - title: "DS"
           payload: '/inform{"role":"ds"}'
-        - title: "MLOps Engineer"
+        - title: "MLOps"
           payload: '/inform{"role":"mlops"}'
 
   # Промпт 3: подтверждение выбора роли. {desired_role} — каноническое значение слота.
@@ -308,6 +343,8 @@ actions:
   - action_assess_candidate
   - action_offer_alternative_role
   - validate_interview_form
+  # Промпт 9: обработчик команды Telegram /start (сброс слотов + utter_greet).
+  - action_telegram_start
 
 # ── Session config ─────────────────────────────────────────────────────────────
 session_config:
