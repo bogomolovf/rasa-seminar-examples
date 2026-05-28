@@ -1,0 +1,352 @@
+version: "3.1"
+
+# ── Intents — намерения пользователя ───────────────────────────────────────────
+# Промпт 3: подключаем `inform` (свободный ответ внутри формы; здесь
+# используется для выбора desired_role через entity `role`).
+# Остальные интенты из DESIGN.md (ask_about_role, thank) добавим в Промптах 3+.
+intents:
+  - greet
+  - goodbye
+  - out_of_scope
+  - bot_challenge
+  - start_interview
+  - restart_interview
+  - affirm
+  - deny
+  - inform
+  # Промпт 9: Telegram присылает «/start» при первом контакте и при нажатии
+  # системной кнопки «Start» (в т.ч. после очистки истории). RASA трактует
+  # сообщения с ведущим «/» как explicit intent-trigger — NLU их не видит,
+  # поэтому держать `/start` среди примеров start_interview бесполезно.
+  # Заводим отдельный intent `start` и rule, которая делает action_restart +
+  # utter_greet, чтобы каждый /start гарантированно сбрасывал сессию.
+  - start
+
+# ── Entities — извлекаемые сущности ────────────────────────────────────────────
+# Промпт 3: добавили entity `role` (lookup + synonyms нормализуют значения
+# к каноническим pm/da/de/ds/mlops).
+# Промпт 4: добавили `full_name` (DIET учится по аннотациям «[Иван Петров](full_name)»)
+# и `email` (regex-feature в DIET; см. nlu.yml).
+entities:
+  - role
+  - full_name
+  - email
+  - years_experience
+  - skill
+  - salary_amount
+
+# ── Slots — память диалога ─────────────────────────────────────────────────────
+# ВАЖНО (Промпт 2): все 7 слотов — заглушки type: text + mappings: from_text,
+# influence_conversation: false. Правильные типы (categorical/float/list) и
+# mapping'и (from_entity, custom) проставим в Промптах 3–6.
+slots:
+  # Промпт 4: имя кандидата — пытаемся достать сущность `full_name` (DIET);
+  # если NER не нашёл — берём весь текст ответа (when requested_slot == candidate_name).
+  candidate_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: full_name
+      - type: from_text
+        # Промпт 8: not_intent — критично, чтобы reset/out_of_scope-сообщения
+        # не попадали в слот через from_text. Без этого фильтра форма
+        # съедает текст «давай заново» как имя/email/опыт и rule «Перезапуск
+        # интервью внутри активной формы» никогда не сработает.
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
+          - start
+        conditions:
+          - active_loop: interview_form
+            requested_slot: candidate_name
+
+  # Промпт 4: email — приоритет на сущность `email` (regex-feature в DIET даёт
+  # точное извлечение); fallback `from_text` нужен, чтобы validate_candidate_email
+  # отрабатывал и на «мусор» вроде «ivan» — иначе слот не выставляется и форма
+  # просто молча переспрашивает, без utter_invalid_email.
+  candidate_email:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: email
+      - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
+          - start
+        conditions:
+          - active_loop: interview_form
+            requested_slot: candidate_email
+
+  desired_role:
+    type: categorical
+    values:
+      - pm
+      - da
+      - de
+      - ds
+      - mlops
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: role
+
+  # Промпт 5: количество лет опыта — float, чтобы validate_years_experience мог
+  # парсить "5", "3.5", "3 года" в число и сравнивать с порогами в DESIGN.md §7.1.
+  # Приоритетно — entity `years_experience` (regex \b\d{1,2}\b даёт sparse-фичу
+  # для DIET); fallback `from_text` нужен, чтобы валидатор отрабатывал на
+  # «полтора года» / некорректном вводе и форма переспрашивала.
+  years_experience:
+    type: float
+    influence_conversation: false
+    min_value: 0
+    max_value: 50
+    mappings:
+      # Промпт 9-fix: from_entity ОБЯЗАТЕЛЬНО conditioned на requested_slot —
+      # regex `\b\d{1,2}\b` (см. nlu.yml) и DIET-обобщение ловят любое 1–2-значное
+      # число как years_experience. Без условия после ответа «1» на вопрос про опыт
+      # форма попутно срабатывала бы и на следующие digit-ответы, либо ввод вне
+      # очереди заполнял слот заранее и пропускал вопрос.
+      - type: from_entity
+        entity: years_experience
+        conditions:
+          - active_loop: interview_form
+            requested_slot: years_experience
+      - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
+          - start
+        conditions:
+          - active_loop: interview_form
+            requested_slot: years_experience
+
+  # Промпт 5: список навыков. List-слот автоматически собирает все entity-значения
+  # `skill` из одного сообщения; валидатор нормализует регистр, дедуплицирует и
+  # отвергает пустой ввод (utter_invalid_skills).
+  # NB: `initial_value: []` намеренно НЕ ставим — иначе форма считает слот уже
+  # заполненным (`[] != None`) и пропускает вопрос про навыки. Слот стартует
+  # с None и заполняется через from_entity / валидатор.
+  skills:
+    type: list
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: skill
+
+  # Промпт 6: ожидаемая зарплата — float, чтобы сравнивать с диапазонами в
+  # roles_requirements.csv. Приоритет — entity `salary_amount` (regex-фича в DIET
+  # ловит «150000», «150 000», «150к», «200 тысяч», «300 000 ₽»), fallback на
+  # from_text — чтобы validate_expected_salary смог отработать на «много» и
+  # переспросить через utter_invalid_salary.
+  expected_salary:
+    type: float
+    influence_conversation: false
+    min_value: 0
+    max_value: 1500000
+    mappings:
+      # Промпт 9-fix: от DIET regex `salary_amount` фонит на любое голое число —
+      # «1», «5» и т.п. ловятся как salary_amount, и без conditions слот зарплаты
+      # заполняется ответом на вопрос про опыт. validate_expected_salary тогда
+      # ругается «Не понял сумму» уже после ответа про годы, и пользователь видит
+      # лишнее сообщение об ошибке + пропуск пункта про зарплату.
+      - type: from_entity
+        entity: salary_amount
+        conditions:
+          - active_loop: interview_form
+            requested_slot: expected_salary
+      - type: from_text
+        not_intent:
+          - restart_interview
+          - out_of_scope
+          - bot_challenge
+          - goodbye
+          - start
+        conditions:
+          - active_loop: interview_form
+            requested_slot: expected_salary
+
+  # Промпт 7: вспомогательный слот для подстановки в шаблоны
+  # utter_assessment_alternative_intro / utter_ask_accept_alternative.
+  # Заполняется action_assess_candidate (когда decision == alternative)
+  # человекочитаемым названием альтернативной роли (например, «Data Analyst»).
+  # Не featurized, чтобы не мешать политике обучения.
+  alternative_role_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
+  # Промпт 7: assessment_decision — категориальный слот, который выставляет
+  # action_assess_candidate по итогам сравнения слотов формы с
+  # roles_requirements.csv. Маппинг `custom` означает: RASA не пытается
+  # вытащить значение из сообщения автоматически, слот изменяется только
+  # явным SlotSet из action. influence_conversation: true — необходимо, чтобы
+  # RulePolicy различала состояния «после assessment'а с decision=alternative»
+  # и «до assessment'а» (иначе intent affirm даёт contradicting rules).
+  assessment_decision:
+    type: categorical
+    values:
+      - pass
+      - fail
+      - alternative
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+# ── Responses — ответы бота ────────────────────────────────────────────────────
+responses:
+  utter_greet:
+    - text: "Привет! Я HR-ассистент команды ML. Помогу пройти первичный скрининг на одну из 5 ролей. Хотите начать собеседование?"
+
+  utter_goodbye:
+    - text: "До свидания! Если передумаете — напишите «начать», и мы продолжим."
+
+  utter_out_of_scope:
+    - text: "Я провожу только HR-скрининг на ML-роли. Напишите «начать», чтобы перейти к интервью, или «пока» — чтобы закончить."
+
+  utter_iamabot:
+    - text: "Да, я HR-бот для первичного скрининга. Решения о найме принимают живые рекрутёры."
+
+  utter_introduce_bot:
+    - text: "Я HR-ассистент команды ML. Задам несколько вопросов о роли, опыте, навыках и зарплатных ожиданиях — и подскажу, подходите ли вы."
+
+  utter_ask_start_interview:
+    - text: "Готовы начать собеседование? Напишите «да» или «начать»."
+
+  # Промпт 4: вопросы формы по имени и email + сообщения о невалидных значениях.
+  utter_ask_candidate_name:
+    - text: "Как тебя зовут? (имя и фамилия)"
+
+  utter_ask_candidate_email:
+    - text: "На какой email отправить материалы?"
+
+  utter_invalid_name:
+    - text: "Похоже, ты ввёл только имя. Напиши, пожалуйста, имя и фамилию."
+
+  utter_invalid_email:
+    - text: "Email выглядит странно, проверь, пожалуйста."
+
+  # Промпт 5: вопросы и ошибки для слотов years_experience / skills.
+  utter_ask_years_experience:
+    - text: "Сколько лет опыта работы в IT/ML у тебя? (число)"
+
+  utter_ask_skills:
+    - text: "Перечисли ключевые навыки через запятую (Python, SQL, ML-фреймворки и т.п.)."
+
+  utter_invalid_experience:
+    - text: "Опыт должен быть числом от 0 до 50. Попробуй ещё раз."
+
+  utter_invalid_skills:
+    - text: "Не понял ни одного навыка. Назови хотя бы один из стандартных: Python, SQL, Spark…"
+
+  # Промпт 6: вопрос и ошибка для слота expected_salary.
+  utter_ask_expected_salary:
+    - text: "Какую зарплату ты ожидаешь? Можно числом (например, 200000), словом (200к, 200 тысяч) или с валютой (300 000 ₽)."
+
+  utter_invalid_salary:
+    - text: "Не понял сумму. Назови число от 50 000 до 1 500 000 ₽ — например, 150000, 150к или 150 тысяч."
+
+  # Промпт 3: вопрос формы про роль + 5 кнопок (payload `/inform{"role":"<code>"}`).
+  # Короткие тайтлы — потому что Telegram режет длинные при горизонтальной раскладке.
+  # Полные названия — в тексте ответа (легенда).
+  utter_ask_desired_role:
+    - text: |-
+        На какую роль ты претендуешь? Можно нажать кнопку или написать текстом.
+        • PM — Project Manager
+        • DA — Data Analyst
+        • DE — Data Engineer
+        • DS — Data Scientist
+        • MLOps — MLOps Engineer
+      buttons:
+        - title: "PM"
+          payload: '/inform{"role":"pm"}'
+        - title: "DA"
+          payload: '/inform{"role":"da"}'
+        - title: "DE"
+          payload: '/inform{"role":"de"}'
+        - title: "DS"
+          payload: '/inform{"role":"ds"}'
+        - title: "MLOps"
+          payload: '/inform{"role":"mlops"}'
+
+  # Промпт 3: подтверждение выбора роли. {desired_role} — каноническое значение слота.
+  utter_role_chosen:
+    - text: "Записал, рассматриваем тебя как {desired_role}."
+
+  # Промпт 7: ответы под три ветки решения assessment.
+  # Динамические части (имя кандидата, роль, причина fail, название альтернативы)
+  # рендерятся либо плейсхолдерами Rasa, либо отдельным dispatcher.utter_message
+  # с готовым текстом из action — см. ActionAssessCandidate / ActionOfferAlternativeRole.
+
+  utter_assessment_pass:
+    - text: "{candidate_name}, отлично — ты подходишь на роль {desired_role}. Свяжемся для следующего этапа."
+
+  utter_assessment_fail_intro:
+    - text: "К сожалению, по итогам сегодня не подходим."
+
+  utter_assessment_alternative_intro:
+    - text: "По исходной роли {desired_role} не проходишь, но есть подходящая альтернатива: {alternative_role_name}."
+
+  utter_ask_accept_alternative:
+    - text: "Хочешь обсудить роль {alternative_role_name}? Да/Нет"
+      buttons:
+        - title: "Да"
+          payload: "/affirm"
+        - title: "Нет"
+          payload: "/deny"
+
+  utter_goodbye_after_decline:
+    - text: "Хорошо, спасибо за уделённое время. Удачи!"
+
+  # Промпт 8: подтверждение сброса интервью. Диспатчится из
+  # ActionResetInterview перед возвратом AllSlotsReset()/ActiveLoop(None).
+  utter_restart_acknowledged:
+    - text: "Начинаем сначала. На какую роль рассмотреть?"
+
+  # Промпт 8: ответ на out_of_scope-сообщение, пойманное внутри активной формы.
+  # Идея — не молча игнорировать (через `ignored_intents`), а явно сказать
+  # «сначала закончим, потом обсудим всё остальное» и переспросить текущий слот.
+  utter_please_continue_form:
+    - text: "Сначала закончим интервью, потом обсудим остальное."
+
+# ── Forms — slot filling ───────────────────────────────────────────────────────
+# Скелет: required_slots пуст. Реальный порядок (desired_role → … → expected_salary)
+# заполним в Промптах 3–6 по DESIGN.md §6.
+forms:
+  interview_form:
+    required_slots:
+      # Промпт 4: сначала спрашиваем имя и email, потом — роль.
+      # Порядок в required_slots = порядок вопросов формы.
+      - candidate_name
+      - candidate_email
+      - desired_role
+      # Промпт 5: после роли — опыт и навыки. Опыт спрашиваем перед навыками,
+      # чтобы потом в Промпте 6 (assessment) сразу знать, на что смотреть.
+      - years_experience
+      - skills
+      # Промпт 6: последний обязательный слот — зарплатные ожидания.
+      - expected_salary
+
+# ── Custom actions — регистрация ───────────────────────────────────────────────
+# Заглушки в actions/actions.py; полноценную логику добавим в Промптах 3–7.
+actions:
+  - action_reset_interview
+  - action_assess_candidate
+  - action_offer_alternative_role
+  - validate_interview_form
+  # Промпт 9: обработчик команды Telegram /start (сброс слотов + utter_greet).
+  - action_telegram_start
+
+# ── Session config ─────────────────────────────────────────────────────────────
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: false  # каждая сессия начинается с чистых слотов

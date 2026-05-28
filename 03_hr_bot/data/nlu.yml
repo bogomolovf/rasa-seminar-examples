@@ -1,0 +1,513 @@
+version: "3.1"
+
+nlu:
+
+# ── Regex-фичи для DIET ────────────────────────────────────────────────────────
+# Промпт 4: regex-pattern для сущности `email`. RegexFeaturizer выдаст DIET'у
+# sparse-фичу «это похоже на email», и тот извлечёт сущность по обучающим
+# аннотациям из intent `inform`. Отдельный RegexEntityExtractor намеренно НЕ
+# подключаем (DESIGN.md §9): он конфликтует с DIET. Если pure-DIET не справится
+# на смоке — добавим экстрактор отдельно (см. comment в config.yml).
+
+- regex: email
+  examples: |
+    - [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+
+# Промпт 5: regex для сущности `years_experience`. Матчит 1–2-значное число —
+# достаточно широко, чтобы покрыть «5», «10», «3 года» (без «3.5» — дробные
+# годы редкость и парсинг внутри validate_years_experience всё равно срежет
+# мусор регулярным выражением \d+(?:[.,]\d+)?).
+- regex: years_experience
+  examples: |
+    - \b\d{1,2}\b
+
+# Промпт 6: regex для сущности `salary_amount`. Покрываем три формата:
+#  • «голое» число с опциональным разделителем-пробелом и валютой («150000»,
+#    «150 000», «150 000 ₽», «300 000 руб»);
+#  • суффиксы k/к («150k», «150к», «150 к», «200к рублей»);
+#  • суффиксы тыс/тысяч/тысячи («150 тыс», «200 тысяч»).
+# Несколько паттернов — это нормально: RegexFeaturizer склеивает их в одну
+# sparse-фичу на entity. Канонизация (выкинуть пробелы, умножить «к» на 1000)
+# делается в _parse_salary, не здесь.
+- regex: salary_amount
+  examples: |
+    - \b\d{1,4}(?:[\s_]?\d{3})+(?:\s*(?:₽|руб(?:лей)?|р))?\b
+    - \b\d{2,7}(?:\s*(?:₽|руб(?:лей)?|р))?\b
+    - \b\d{1,4}\s*[кk](?:\s*(?:₽|руб(?:лей)?|р))?\b
+    - \b\d{1,4}\s*тыс(?:яч[аи]?)?(?:\s*(?:₽|руб(?:лей)?|р))?\b
+
+# ── Приветствие ────────────────────────────────────────────────────────────────
+
+- intent: greet
+  examples: |
+    - Привет
+    - Здравствуйте
+    - Добрый день
+    - Доброе утро
+    - Добрый вечер
+    - Привет, бот
+    - Здравствуй
+    - Хай
+    - Салют
+
+# ── Прощание ───────────────────────────────────────────────────────────────────
+
+- intent: goodbye
+  examples: |
+    - Пока
+    - До свидания
+    - Спасибо, на этом всё
+    - Спасибо, пока
+    - Бывай
+    - До встречи
+    - Всего доброго
+    - Закончим
+    - Выход
+
+# ── Out-of-scope ───────────────────────────────────────────────────────────────
+
+- intent: out_of_scope
+  examples: |
+    - Какая погода в Москве?
+    - Расскажи анекдот
+    - Реши задачу
+    - Что ты умеешь, кроме HR?
+    - Закажи мне пиццу
+    - Кто выиграл матч вчера?
+    - Помоги с домашкой
+    - Где найти работу мечты?
+
+# ── Bot challenge — «ты бот?» ──────────────────────────────────────────────────
+
+- intent: bot_challenge
+  examples: |
+    - Ты бот?
+    - Это бот?
+    - Ты человек?
+    - С кем я общаюсь?
+    - Кто ты?
+    - Ты живой?
+    - Ты настоящий или робот?
+    - Я разговариваю с программой?
+
+# ── Старт собеседования ────────────────────────────────────────────────────────
+
+- intent: start_interview
+  examples: |
+    - Хочу пройти собеседование
+    - Давай начнём
+    - Готов к интервью
+    - Начнём скрининг
+    - Поехали
+    - Начать собеседование
+    - Стартуем
+    - Готов отвечать на вопросы
+    - Хочу подать заявку
+    - Начать
+    - старт
+    - запустить интервью
+    - давай интервью
+    - хочу собеседование
+
+# ── Telegram system /start ────────────────────────────────────────────────────
+# Промпт 9: «/start» в Telegram присылается клиентом при первом контакте и при
+# нажатии системной кнопки «Start» (в т.ч. после очистки истории чата). RASA
+# трактует ведущий «/» как explicit intent-trigger — текст «/start» парсится
+# как `intent=start`, минуя NLU. Поэтому держать «/start» в start_interview
+# бессмысленно (NLU всё равно не классифицирует), а отдельный intent с явным
+# rule в data/rules.yml гарантирует сброс сессии. Примеры здесь — для
+# документации и чтобы валидатор Rasa не ругался на intent без training data.
+
+- intent: start
+  examples: |
+    - /start
+    - /start@HR_bot
+
+# ── Сброс / рестарт интервью ──────────────────────────────────────────────────
+
+- intent: restart_interview
+  examples: |
+    - Начать заново
+    - Сброс
+    - Сбрось
+    - Сбрось всё
+    - Перезапусти интервью
+    - Перезапуск
+    - Хочу начать с начала
+    - Начнём с начала
+    - Давай заново
+    - Давай сначала
+    - По новой
+    - Reset
+    - restart
+    - Отмена
+    - Перезагрузка
+
+# ── Подтверждение ──────────────────────────────────────────────────────────────
+
+- intent: affirm
+  examples: |
+    - Да
+    - Конечно
+    - Согласен
+    - Готов
+    - Давай
+    - Ага
+    - Точно
+    - Да, давайте
+    - Подтверждаю
+    - Окей
+
+# ── Отказ ──────────────────────────────────────────────────────────────────────
+
+- intent: deny
+  examples: |
+    - Нет
+    - Не хочу
+    - Откажусь
+    - Не сейчас
+    - Пропусти
+    - Не буду отвечать
+    - Не надо
+    - Нет, спасибо
+
+# ── Inform — свободный ответ в форме (Промпт 3: только entity `role`) ──────────
+# Канонические значения роли (pm/da/de/ds/mlops) проставляются:
+#  • либо прямо в аннотации (`[pm](role)`),
+#  • либо через synonym-секции ниже (например, `[датасаентист](role:ds)`).
+# Минимум 20 примеров с разнообразной формулировкой.
+
+- intent: inform
+  examples: |
+    - Хочу как [Data Scientist](role:ds)
+    - [мл-опс](role:mlops)
+    - попробую [pm](role)
+    - Я [data engineer](role:de)
+    - [Data Analyst](role:da), пожалуйста
+    - Иду на [ds](role)
+    - [Project Manager](role:pm)
+    - буду пробовать [аналитика данных](role:da)
+    - [MLOps Engineer](role:mlops)
+    - Меня интересует роль [дата-инженера](role:de)
+    - откликаюсь на [data scientist](role:ds)
+    - хочу [проджект](role:pm)
+    - давайте [de](role)
+    - выбираю [mlops](role)
+    - я [датасаентист](role:ds)
+    - смотрю на позицию [DA](role:da)
+    - подаюсь как [data engineer](role:de)
+    - роль — [продакт менеджер](role:pm)
+    - можно [млопс](role:mlops)
+    - тестируюсь на [DS](role:ds)
+    - выбираю позицию [аналитик](role:da)
+    - хотел бы [pm](role)
+    - давайте [data analyst](role:da)
+    - откликнусь на [data scientist](role:ds)
+    - я инженер данных — [de](role)
+    - роль [mlops](role)
+    - Меня зовут [Иван Петров](full_name)
+    - Я [Мария Иванова](full_name)
+    - Меня зовут [Анна Смирнова](full_name)
+    - Зовут меня [Алексей Кузнецов](full_name)
+    - Это [Дмитрий Соколов](full_name)
+    - [Ольга Васильева](full_name)
+    - [Сергей Морозов](full_name)
+    - Я — [Екатерина Новикова](full_name)
+    - Имя — [Павел Фёдоров](full_name)
+    - Здравствуйте, я [Юлия Михайлова](full_name)
+    - мой email [ivan@example.com](email)
+    - пишите на [maria.ivanova@yandex.ru](email)
+    - [anna@gmail.com](email)
+    - почта [petr.sokolov@mail.ru](email)
+    - можно на [dmitry+ml@gmail.com](email)
+    - [olga_va@outlook.com](email)
+    - вот email — [sergey-m@yahoo.com](email)
+    - [ekaterina.n@company.io](email)
+    - адрес [pavel.fedorov@example.org](email)
+    - [yulia@bk.ru](email)
+    - [john.doe@test.com](email)
+    - [a.b.c@sub.domain.co](email)
+    - У меня [5](years_experience) лет опыта
+    - [3](years_experience) года в IT
+    - опыт [7](years_experience) лет
+    - всего [1](years_experience) год
+    - работаю [10](years_experience) лет
+    - стаж [2](years_experience) года
+    - около [4](years_experience) лет в ML
+    - Знаю [Python](skill) и [SQL](skill)
+    - Работал с [Spark](skill), [Airflow](skill), [Kafka](skill)
+    - Стек\: [pandas](skill), [scikit-learn](skill), [PyTorch](skill)
+    - Использую [Docker](skill) и [Kubernetes](skill)
+    - Пишу на [Python](skill), знаю [pandas](skill) и [NumPy](skill)
+    - Владею [TensorFlow](skill), [Keras](skill), [XGBoost](skill)
+    - Опыт с [MLflow](skill), [DVC](skill), [Airflow](skill)
+    - Работаю с [Tableau](skill) и [Power BI](skill)
+    - В стеке [Scala](skill), [Spark](skill), [Hadoop](skill)
+    - Знаком с [BERT](skill), [transformers](skill), [LLM](skill)
+    - Разрабатывал на [Java](skill) и [Go](skill)
+    - [2 года](years_experience), [Python](skill), [SQL](skill)
+    - [3](years_experience) года опыта, владею [PyTorch](skill) и [pandas](skill)
+    - Стаж [5](years_experience) лет, стек\: [Python](skill), [Spark](skill), [Airflow](skill)
+    - [150000](salary_amount) рублей
+    - хочу [200 тысяч](salary_amount)
+    - ожидаемая зарплата [300к](salary_amount)
+    - [150 000](salary_amount) ₽
+    - [200к рублей](salary_amount)
+    - [180 тыс](salary_amount)
+    - зарплата [250000](salary_amount)
+    - рассчитываю на [220000](salary_amount)
+    - хотел бы получать [250 000](salary_amount)
+    - желаемая зп — [180к](salary_amount)
+    - моя ожидаемая ставка [300 000 руб](salary_amount)
+    - примерно [200000](salary_amount) ₽
+    - [150к](salary_amount) в месяц
+    - [180 тысяч](salary_amount) рублей
+    - на руки [220 000](salary_amount)
+
+# ── Lookup table: skill ───────────────────────────────────────────────────────
+# Промпт 5: канонические названия навыков. Регистр близок к общеупотребимому
+# (lowercase для языков/тулзов; CamelCase для брендов «PyTorch», «TensorFlow»).
+# Synonyms ниже приводят русские/транслитерированные варианты к канонике;
+# validate_skills дополнительно lowercased, поэтому матч кейс-инсенситивен.
+
+- lookup: skill
+  examples: |
+    - Python
+    - SQL
+    - Java
+    - Scala
+    - Go
+    - Bash
+    - pandas
+    - NumPy
+    - Spark
+    - Dask
+    - scikit-learn
+    - PyTorch
+    - TensorFlow
+    - Keras
+    - XGBoost
+    - LightGBM
+    - CatBoost
+    - NLP
+    - CV
+    - LLM
+    - RAG
+    - transformers
+    - BERT
+    - GPT
+    - Airflow
+    - Kafka
+    - ClickHouse
+    - Snowflake
+    - dbt
+    - Hadoop
+    - HDFS
+    - Docker
+    - Kubernetes
+    - MLflow
+    - DVC
+    - Weights & Biases
+    - AWS
+    - GCP
+    - Tableau
+    - Power BI
+    - A/B-testing
+    - статистика
+    - метрики
+
+# ── Synonyms: нормализация навыков к канонике из lookup ───────────────────────
+
+- synonym: Python
+  examples: |
+    - python
+    - Python
+    - питон
+    - пайтон
+
+- synonym: SQL
+  examples: |
+    - sql
+    - SQL
+    - эс-кью-эл
+    - постгрес
+    - postgresql
+    - postgres
+    - mysql
+
+- synonym: PyTorch
+  examples: |
+    - pytorch
+    - PyTorch
+    - torch
+    - торч
+
+- synonym: TensorFlow
+  examples: |
+    - tensorflow
+    - TensorFlow
+    - tf
+    - TF
+
+- synonym: scikit-learn
+  examples: |
+    - sklearn
+    - scikit-learn
+    - склерн
+
+- synonym: Kubernetes
+  examples: |
+    - k8s
+    - kubernetes
+    - Kubernetes
+    - кубер
+
+- synonym: Docker
+  examples: |
+    - docker
+    - Docker
+    - докер
+
+# ── Lookup table: role ────────────────────────────────────────────────────────
+# Полный список форм (canonical + EN + RU + abbreviations + cyrillic transliter.)
+# EntitySynonymMapper нормализует значения к pm/da/de/ds/mlops через synonym-блоки ниже.
+
+- lookup: role
+  examples: |
+    - pm
+    - PM
+    - project manager
+    - Project Manager
+    - продакт менеджер
+    - проджект менеджер
+    - проджект-менеджер
+    - проджект
+    - продакт
+    - менеджер проекта
+    - руководитель проекта
+    - пм
+    - da
+    - DA
+    - data analyst
+    - Data Analyst
+    - дата аналитик
+    - дата-аналитик
+    - аналитик данных
+    - аналитик
+    - data-аналитик
+    - да
+    - даталитик
+    - de
+    - DE
+    - data engineer
+    - Data Engineer
+    - дата инженер
+    - дата-инженер
+    - инженер данных
+    - data-инженер
+    - датаинженер
+    - де
+    - data eng
+    - ds
+    - DS
+    - data scientist
+    - Data Scientist
+    - датасаентист
+    - дата сайентист
+    - дата-сайентист
+    - сайентист
+    - data-сайентист
+    - дс
+    - data sci
+    - mlops
+    - MLOps
+    - MLOps Engineer
+    - mlops engineer
+    - млопс
+    - мл-опс
+    - мл опс
+    - ml ops
+    - ml-ops
+    - mlops инженер
+    - млопс инженер
+    - млопс-инженер
+
+# ── Synonyms: нормализация к 5 каноническим значениям ─────────────────────────
+
+- synonym: pm
+  examples: |
+    - PM
+    - pm
+    - ПМ
+    - пм
+    - project manager
+    - Project Manager
+    - продакт менеджер
+    - продакт-менеджер
+    - продакт
+    - проджект менеджер
+    - проджект-менеджер
+    - проджект
+    - менеджер проекта
+    - руководитель проекта
+
+- synonym: da
+  examples: |
+    - DA
+    - da
+    - ДА
+    - да
+    - data analyst
+    - Data Analyst
+    - дата аналитик
+    - дата-аналитик
+    - аналитик данных
+    - аналитик
+    - data-аналитик
+    - даталитик
+
+- synonym: de
+  examples: |
+    - DE
+    - de
+    - ДЕ
+    - де
+    - data engineer
+    - Data Engineer
+    - дата инженер
+    - дата-инженер
+    - инженер данных
+    - data-инженер
+    - датаинженер
+    - data eng
+
+- synonym: ds
+  examples: |
+    - DS
+    - ds
+    - ДС
+    - дс
+    - data scientist
+    - Data Scientist
+    - датасаентист
+    - дата сайентист
+    - дата-сайентист
+    - сайентист
+    - data-сайентист
+    - data sci
+
+- synonym: mlops
+  examples: |
+    - MLOps
+    - mlops
+    - МЛОПС
+    - млопс
+    - мл-опс
+    - мл опс
+    - ml ops
+    - ml-ops
+    - MLOps Engineer
+    - mlops engineer
+    - mlops инженер
+    - млопс инженер
+    - млопс-инженер

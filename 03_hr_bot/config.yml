@@ -1,0 +1,48 @@
+recipe: default.v1
+
+language: ru
+
+pipeline:
+- name: WhitespaceTokenizer
+  # Признаки из lookup-таблиц/regex (sparse-фичи для DIET, БЕЗ извлечения сущностей).
+  # Промпт 3: нужен, чтобы DIET «видел» role-lookup как фичу.
+  # RegexEntityExtractor намеренно НЕ добавляем (DESIGN.md §9): он конфликтует с DIET
+  # на подстрочных названиях и перезаписывает более длинное значение DIET более
+  # коротким из lookup. RegexFeaturizer таких проблем не создаёт — только sparse-фичи.
+- name: RegexFeaturizer
+  # Символьные n-граммы: улучшают распознавание при опечатках и падежных формах
+- name: CountVectorsFeaturizer
+  analyzer: char_wb
+  min_ngram: 2
+  max_ngram: 4
+- name: CountVectorsFeaturizer
+  analyzer: word
+  # Классификатор интентов + теггер сущностей (DIET = Dual Intent and Entity Transformer).
+  # DIET использует lookup tables через RegexFeaturizer выше (sparse-фичи).
+- name: DIETClassifier
+  epochs: 100
+  constrain_similarities: true
+  # Нормализует синонимы к каноническим именам (например, «датасаентист» → ds)
+- name: EntitySynonymMapper
+- name: FallbackClassifier
+  threshold: 0.7
+  ambiguity_threshold: 0.1
+
+policies:
+- name: MemoizationPolicy
+  max_history: 5
+- name: RulePolicy
+  # Промпт 7: НЕ задаём core_fallback_action_name — стандартный
+  # action_default_fallback откатывает последний user-message (включая
+  # все слоты, которые SlotSet выставил в action'е), что ломало
+  # alternative→affirm флоу (после action_offer_alternative_role
+  # tracker «забывал» новые значения desired_role/assessment_decision).
+  # Если RulePolicy не уверена и TED тоже — RulePolicy вернёт нулевую
+  # уверенность, и Rasa упадёт в action_listen (Default behavior).
+  # Out-of-scope intent остаётся через rule «Вне области знаний».
+  core_fallback_threshold: 0.0
+  enable_fallback_prediction: false
+- name: TEDPolicy
+  max_history: 5
+  epochs: 100
+assistant_id: 20260514-225432-bronze-root

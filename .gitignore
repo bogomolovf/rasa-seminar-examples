@@ -11,3 +11,7 @@ results/
 
 # macOS
 .DS_Store
+
+# Local credentials (Telegram tokens и т.п.) — никогда в репо
+credentials.local.yml
+**/credentials.local.yml

@@ -1,0 +1,134 @@
+version: "3.1"
+
+rules:
+
+# ── Базовые ────────────────────────────────────────────────────────────────────
+
+- rule: Приветствие
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Прощание
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- rule: Вне области знаний
+  # Промпт 8: rule срабатывает только если нет активной формы. Внутри
+  # interview_form поведение для out_of_scope покрыто отдельной story
+  # (utter_please_continue_form + повторный вход в форму).
+  condition:
+  - active_loop: null
+  steps:
+  - intent: out_of_scope
+  - action: utter_out_of_scope
+
+- rule: Бот challenge
+  steps:
+  - intent: bot_challenge
+  - action: utter_iamabot
+
+# ── Запуск формы собеседования ─────────────────────────────────────────────────
+
+- rule: Старт собеседования — запустить interview_form
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+
+# ── Завершение формы — assessment кандидата ───────────────────────────────────
+# Промпт 7: после заполнения всех 6 required_slots формы сразу вызываем
+# action_assess_candidate (он считает решение и диспатчит ответ под
+# pass/fail/alternative). Старый rule с utter_role_chosen больше не нужен —
+# подтверждение роли неявно покрывается ответом assessment'а.
+
+- rule: Завершение interview_form — ассессмент кандидата
+  condition:
+  - active_loop: interview_form
+  steps:
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+
+# ── Ветка alternative ─────────────────────────────────────────────────────────
+# После того как action_assess_candidate выставил decision=alternative и
+# спросил «Хочешь обсудить роль X?», бот ждёт affirm/deny. Обе ветки —
+# rule-based, чтобы поведение было детерминированным и не зависело от TED.
+
+- rule: Согласие на альтернативу
+  condition:
+  - slot_was_set:
+    - assessment_decision: alternative
+  steps:
+  - intent: affirm
+  - action: action_offer_alternative_role
+
+- rule: Отказ от альтернативы
+  condition:
+  - slot_was_set:
+    - assessment_decision: alternative
+  steps:
+  - intent: deny
+  - action: utter_goodbye_after_decline
+
+# ── Сброс интервью ─────────────────────────────────────────────────────────────
+# Промпт 8: рестарт работает «откуда угодно». RASA по умолчанию внутри
+# активной формы игнорирует user intents (form loop запрашивает слот заново),
+# поэтому нужно две отдельные rules:
+#   • внутри активной interview_form: явно ловим restart_interview, вызываем
+#     action_reset_interview и сбрасываем active_loop в null (action и сам
+#     возвращает ActiveLoop(None), но указание `active_loop: null` шагом
+#     ниже фиксирует переход для RulePolicy).
+#   • вне формы: просто intent → action.
+# Разделение на две rules нужно, чтобы избежать contradicting predictions —
+# одна rule без condition не покрывает кейс с active_loop корректно.
+
+- rule: Перезапуск интервью внутри активной формы
+  condition:
+  - active_loop: interview_form
+  steps:
+  - intent: restart_interview
+  - action: action_reset_interview
+  - active_loop: null
+
+- rule: Перезапуск интервью вне формы
+  steps:
+  - intent: restart_interview
+  - action: action_reset_interview
+  - active_loop: null
+
+# ── Telegram /start — сброс сессии и приветствие ──────────────────────────────
+# Промпт 9: Telegram присылает «/start» при первом контакте и при нажатии
+# системной кнопки «Start» (в т.ч. сразу после очистки истории чата клиентом).
+# RASA парсит ведущий «/» как explicit intent-trigger → intent=start, минуя
+# NLU. Без этого rule бот после «/start» оставался в прошлом состоянии
+# (например, повторно показывал результат assessment'а из предыдущей сессии),
+# потому что сервер не знает про очистку клиентом — tracker по chat_id жив.
+# action_telegram_start обнуляет слоты + active_loop и диспатчит utter_greet.
+# Принципиально НЕ зовём action_restart: его Restarted() обрывает текущую
+# цепочку предсказаний, и следующий шаг rule до пользователя не доходит.
+
+- rule: Telegram /start вне формы — сброс и приветствие
+  condition:
+  - active_loop: null
+  steps:
+  - intent: start
+  - action: action_telegram_start
+
+# Внутри активной interview_form поведение идентичное (сброс слотов и приветствие),
+# но нужна отдельная rule с условием active_loop, иначе одна rule без condition
+# даёт contradicting predictions для двух разных состояний треккера. Кроме того,
+# после action_telegram_start явно сбрасываем active_loop в null — он деактивируется
+# через AllSlotsReset+ActiveLoop(None) в самой action, но указание шагом ниже
+# фиксирует переход для RulePolicy.
+
+- rule: Telegram /start внутри активной формы — сброс и приветствие
+  condition:
+  - active_loop: interview_form
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - active_loop: null

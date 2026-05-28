@@ -1,0 +1,349 @@
+version: "3.1"
+
+stories:
+
+# Простые «non-form» истории: приветствие, согласие на интервью, сброс.
+# Они тренируют TED на базовых ветках, не связанных с assessment'ом.
+
+# utter_greet прямо спрашивает «Хотите начать собеседование?», поэтому «да»
+# после приветствия — это согласие на интервью, а не запрос дополнительной
+# информации. Запускаем interview_form сразу. Раньше тут стояло
+# utter_introduce_bot — пользователю приходилось дополнительно писать «начать»,
+# что не интуитивно. Заодно это устраняет нестабильность TED после Промпта 9:
+# action_telegram_start (на /start) тоже диспатчит utter_greet, и без явной
+# story после «action_telegram_start → affirm» политика угадывала utter_goodbye
+# с 0.14 confidence.
+
+- story: Согласие на старт интервью (после greet)
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: affirm
+  - action: interview_form
+  - active_loop: interview_form
+
+# То же самое, но для триггера через Telegram-команду /start. action_telegram_start
+# показывает то же приветствие; после affirm запускаем форму. Без этой story
+# TED уходил в utter_goodbye по бизнес-смыслу абсолютно случайно.
+
+- story: Согласие на старт интервью (после /start)
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - intent: affirm
+  - action: interview_form
+  - active_loop: interview_form
+
+# Парная ветка отказа после /start. Без этой story TED иногда отвечал
+# utter_introduce_bot или другим случайным действием.
+
+- story: Отказ от интервью после /start
+  steps:
+  - intent: start
+  - action: action_telegram_start
+  - intent: deny
+  - action: utter_goodbye
+
+- story: Сброс интервью посередине
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: restart_interview
+  - action: action_reset_interview
+  - intent: goodbye
+  - action: utter_goodbye
+
+# ── Промпт 8: sad-path stories ────────────────────────────────────────────────
+# RASA внутри активной формы по умолчанию игнорирует пользовательские intents:
+# form loop переспрашивает текущий required_slot. Чтобы out_of_scope-сообщение
+# не молчало, а возвращалось к форме с явным «сначала закончим интервью», мы:
+#   1) НЕ добавляем `ignored_intents: [out_of_scope]` в форму (тогда было бы
+#      молча);
+#   2) Описываем сторис «во время формы пришёл out_of_scope → диспатчим
+#      utter_please_continue_form → возвращаемся в interview_form».
+# Две вариации (на разных шагах формы — email и salary) нужны, чтобы TED
+# обобщил поведение независимо от `requested_slot`.
+
+- story: out_of_scope во время формы (этап email) — продолжаем
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - slot_was_set:
+    - requested_slot: candidate_email
+  - intent: out_of_scope
+  - action: utter_please_continue_form
+  - action: interview_form
+  - active_loop: interview_form
+
+- story: out_of_scope во время формы (этап salary) — продолжаем
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - slot_was_set:
+    - requested_slot: expected_salary
+  - intent: out_of_scope
+  - action: utter_please_continue_form
+  - action: interview_form
+  - active_loop: interview_form
+
+# Greet → представляемся + предлагаем старт → пользователь отказывается → goodbye.
+# Используется TED'ом, чтобы понять: после affirm — продолжаем (см. story
+# «Согласие на старт интервью» выше), после deny — прощаемся.
+
+- story: Greet → отказ от интервью на старте
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: deny
+  - action: utter_goodbye
+
+# ── Промпт 7: 4 истории под три ветки assessment'а ────────────────────────────
+# Каждая включает `slot_was_set: assessment_decision: <code>` после
+# action_assess_candidate — TED должен видеть, как меняется решение, чтобы
+# корректно роутить alternative→affirm / alternative→deny ветви.
+
+# 1) PASS: DS, 5 лет, [python, scikit-learn, pytorch], 200 000 → подходит.
+- story: PASS — Data Scientist с полным стеком
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Иван Петров
+  - slot_was_set:
+    - candidate_name: Иван Петров
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: ivan@example.com
+  - slot_was_set:
+    - candidate_email: ivan@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: scikit-learn
+      - entity: skill
+        value: PyTorch
+  - slot_was_set:
+    - skills: ["python", "scikit-learn", "pytorch"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "200000"
+  - slot_was_set:
+    - expected_salary: 200000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: pass
+
+# 2) FAIL: DS, 0 лет — недостаточно опыта, fail.
+- story: FAIL — Data Scientist без опыта
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Мария Иванова
+  - slot_was_set:
+    - candidate_name: Мария Иванова
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: maria@example.com
+  - slot_was_set:
+    - candidate_email: maria@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "0"
+  - slot_was_set:
+    - years_experience: 0.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: Python
+  - slot_was_set:
+    - skills: ["python"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "180000"
+  - slot_was_set:
+    - expected_salary: 180000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: fail
+
+# 3) ALTERNATIVE + AFFIRM: DS, 5 лет, [sql, python, tableau] → нет scikit-learn/pytorch
+# → предлагает Data Analyst → пользователь согласен → пере-оценка → pass.
+- story: ALTERNATIVE-ACCEPT — DS без ML-стека переходит в DA
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Сергей Морозов
+  - slot_was_set:
+    - candidate_name: Сергей Морозов
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: sergey@example.com
+  - slot_was_set:
+    - candidate_email: sergey@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: SQL
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: Tableau
+  - slot_was_set:
+    - skills: ["sql", "python", "tableau"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "150000"
+  - slot_was_set:
+    - expected_salary: 150000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: alternative
+  - intent: affirm
+  - action: action_offer_alternative_role
+  - slot_was_set:
+    - desired_role: da
+  - slot_was_set:
+    - assessment_decision: pass
+  - intent: goodbye
+  - action: utter_goodbye
+
+# 4) ALTERNATIVE + DENY: тот же DS-кейс, но пользователь отказывается.
+- story: ALTERNATIVE-DENY — DS отказывается от DA
+  steps:
+  - intent: start_interview
+  - action: interview_form
+  - active_loop: interview_form
+  - intent: inform
+    entities:
+      - entity: full_name
+        value: Ольга Васильева
+  - slot_was_set:
+    - candidate_name: Ольга Васильева
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: email
+        value: olga@example.com
+  - slot_was_set:
+    - candidate_email: olga@example.com
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: role
+        value: ds
+  - slot_was_set:
+    - desired_role: ds
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: years_experience
+        value: "5"
+  - slot_was_set:
+    - years_experience: 5.0
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: skill
+        value: SQL
+      - entity: skill
+        value: Python
+      - entity: skill
+        value: Tableau
+  - slot_was_set:
+    - skills: ["sql", "python", "tableau"]
+  - action: interview_form
+  - intent: inform
+    entities:
+      - entity: salary_amount
+        value: "150000"
+  - slot_was_set:
+    - expected_salary: 150000.0
+  - action: interview_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_assess_candidate
+  - slot_was_set:
+    - assessment_decision: alternative
+  - intent: deny
+  - action: utter_goodbye_after_decline
